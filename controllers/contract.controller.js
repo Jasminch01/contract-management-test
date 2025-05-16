@@ -1,3 +1,4 @@
+const PDFDocument = require('pdfkit')
 const Contract = require('../models/Contract');
 
 // @desc Create a new contract.
@@ -69,7 +70,7 @@ exports.updateContract = async(req, res) => {
 };
 
 // @desc Delete a contract
-exports.deleteContract = async (req, res) => {
+exports.deleteContract = async(req, res) => {
   try {
     const deleted = await Contract.findByIdAndDelete(req.params.id);
     if (!deleted) {
@@ -81,3 +82,79 @@ exports.deleteContract = async (req, res) => {
     res.status(500).json({ message: 'Error deleting contract', error });
   }
 };
+
+// @desc GET /api/contracts/:id/preview
+exports.previewContract = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const contract = await Contract.findById(id);
+
+    if (!contract) {
+      return res.status(404).json({ message: 'Contract not found' });
+    }
+
+    res.status(200).json({
+      preview: {
+        contractDate: contract.contractDate,
+        buyer: contract.buyer,
+        seller: contract.seller,
+        grade: contract.grade,
+        commodity: contract.commodity,
+        priceExGST: contract.priceExGST,
+        deliveryPeriod: contract.deliveryPeriod,
+        deliveryDestination: contract.deliveryDestination,
+        notes: contract.notes,
+        specialCondition: contract.specialCondition,
+        contractType: contract.contractType,
+        createdAt: contract.createdAt
+      }
+    });
+  } catch (error) {
+    console.error('Error previewing contract:', error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+};
+
+
+// @desc GET /api/contracts/:id/export-pdf
+exports.exportContractPDF = async(req, res) => {
+  try{
+    const contract = await Contract.findById(req.params.id);
+
+    if(!contract){
+      return res.status(404).json({message: 'Contract not found'});
+    }
+
+    // Set headers for download.
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader(
+      'Content-Destination',
+      `attachment; filename=Contract_${contract._id}.pdf`
+    );
+
+    const doc = new PDFDocument();
+    doc.pipe(res);
+
+    // Add Title
+    doc.fontSize(20).text("Contract Details", { align:'center' }).moveDown();
+
+    // List all Contract field
+    Object.entries(contract.toObject()).forEach(([key, value]) => {
+      // Format dates.
+      if(value instanceof Date){
+        value = new Date(value).toLocaleDateString();
+      }
+      else if(typeof value === 'object' && value !== null){
+        value = JSON.stringify(value, null, 2);
+      }
+
+      doc.fontSize(12).text(`${key}: ${value}`);
+    });
+
+    doc.end();
+  }
+  catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error generating PDF' });
+  }
+}
