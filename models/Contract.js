@@ -28,7 +28,9 @@ const contractSchema = new mongoose.Schema({
   termsAndConditions: String,
   notes: String,
   createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }
+  updatedAt: { type: Date, default: Date.now },
+  isDeleted:   { type: Boolean, default: false },
+  deletedAt:   { type: Date }
 });
 
 module.exports = mongoose.model('Contract', contractSchema);

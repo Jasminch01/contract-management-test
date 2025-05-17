@@ -158,3 +158,54 @@ exports.exportContractPDF = async(req, res) => {
     res.status(500).json({ message: 'Error generating PDF' });
   }
 }
+
+// @desc Move to trash.
+exports.softDeleteContract = async(req, res) => {
+  const { id } = req.params;
+
+  const contract = await Contract.findByIdAndUpdate(
+    id,
+    { isDeleted: true, deletedAt: new Date() },
+    {new: true}
+  );
+
+  if(!contract){
+    return res.status(404).json({message: 'Contract not found'});
+  }
+
+  res.json({message: 'Moved to trash', contract});
+}
+
+// @desc restore.
+exports.restoreContract = async(req, res) => {
+  const {id} = req.params;
+
+  const contract = await Contract.findByIdAndUpdate(
+    id,
+    {isDeleted: false, deletedAt: null},
+    {new: true}
+  );
+  if(!contract){
+    return res.status(404).json({ msg: 'Not found' });
+  }
+
+  res.json({ msg: 'Restored', contract });
+}
+
+// @desc permanently delete
+exports.hardDeleteContract = async (req, res) => {
+  const { id } = req.params;
+
+  const deleted = await Contract.findByIdAndDelete(id);
+  if(!deleted){
+    return res.status(404).json({ msg: 'Not found' });
+  }
+
+  res.json({ msg: 'Permanently removed' });
+};
+
+// @desc list trash
+exports.getDeletedContracts = async(req, res) => {
+  const trash = await Contract.find({ isDeleted: true }).sort({ deletedAt: -1 });
+  res.json(trash);
+};
