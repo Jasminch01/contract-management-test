@@ -1,4 +1,6 @@
 const mongoose = require('mongoose');
+const Buyer = require('./Buyer.js');
+const Seller = require('./Seller.js')
 
 const contractSchema = new mongoose.Schema({
   contractDate: Date,
@@ -9,9 +11,10 @@ const contractSchema = new mongoose.Schema({
   buyerContractReference: String,
   sellerContractReference: String,
   grade: String,
-  buyer: String,
-  seller: String,
+  buyer: { type: mongoose.Schema.Types.ObjectId, ref: 'Buyer' },
+  seller: { type: mongoose.Schema.Types.ObjectId, ref: 'Seller' },
   attachedSellerContract: String, // File URL or name
+  attachedBuyerContract: String,  // File URL or name
   contractType: String,
   NGRNumber: String,
   deliveryOption: String,
@@ -20,6 +23,7 @@ const contractSchema = new mongoose.Schema({
   priceExGST: String,
   conveyance: String,
   commodity: String,
+  certificationScheme:   String,
   paymentTerms: String,
   brokerRate: String,
   deliveryDestination: String,

@@ -6,8 +6,11 @@ exports.createContract = async(req, res) => {
     try {
         const data = req.body;
         
-        if(req.file){
-            data.attachedSellerContract = req.file.filename;
+        if(req.files){
+            if(req.files.attachedSellerContract)
+              data.attachedSellerContract = req.files.attachedSellerContract[0].filename;
+            if(req.files.attachedBuyerContract)
+              data.attachedBuyerContract  = req.files.attachedBuyerContract[0].filename;
         }
 
         const contract = new Contract(data);

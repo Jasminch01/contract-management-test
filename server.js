@@ -7,6 +7,8 @@ const dotenv = require('dotenv')
 const connectDB = require('./config/db.js');
 const contractRoutes = require('./routes/contract.routes.js');
 const path = require('path');
+const buyerRoutes = require('./routes/buyer.routes.js')
+const sellerRoutes = require('./routes/seller.routes.js');
 
 
 dotenv.config();
@@ -26,6 +28,8 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Contract API route
 app.use('/api/contracts', contractRoutes);
+app.use('/api/buyers',  buyerRoutes);
+app.use('/api/sellers', sellerRoutes);
 
 const PORT = process.env.PORT || 5000;
 

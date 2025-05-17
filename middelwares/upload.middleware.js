@@ -12,6 +12,9 @@ const storage = multer.diskStorage({
     }
 });
 
-const upload = multer({ storage });
+const upload = multer({ storage }).fields([
+  { name: 'attachedSellerContract', maxCount: 1 },
+  { name: 'attachedBuyerContract',  maxCount: 1 }
+]);
 
 module.exports = upload;
