@@ -11,8 +11,9 @@ const sellerSchema = new mongoose.Schema({
     mainNgr:          { type: String },
     contactName:      { type: String },
     locationZone:     { type: String },
-    phoneNumber:      { type: String }
-
+    phoneNumber:      { type: String },
+    isDeleted: { type: Boolean, default: false },
+    deletedAt: { type: Date }
 },
 { timestamps: true });
 

@@ -67,3 +67,54 @@ exports.searchBuyers = async (req, res) => {
     res.status(500).json(err);
   }
 };
+
+// move single Buyer to trash
+exports.trashBuyer = async (req, res) => {
+  try {
+    const b = await Buyer.findByIdAndUpdate(
+      req.params.id,
+      { isDeleted: true, deletedAt: new Date() },
+      { new: true }
+    );
+    if (!b) return res.status(404).json({ message: 'Not found' });
+    res.json({ message: 'Moved to rubbish bin', b });
+  } catch (err) { res.status(500).json(err); }
+};
+
+// list trashed Buyers
+exports.getTrashBuyers = async (_req, res) => {
+  try {
+    const list = await Buyer.find({ isDeleted: true }).sort({ deletedAt: -1 });
+    res.json(list);
+  } catch (err) { res.status(500).json(err); }
+};
+
+// restore Buyer
+exports.restoreBuyer = async (req, res) => {
+  try {
+    const b = await Buyer.findByIdAndUpdate(
+      req.params.id,
+      { isDeleted: false, deletedAt: null },
+      { new: true }
+    );
+    if (!b) return res.status(404).json({ message: 'Not found' });
+    res.json({ message: 'Restored', b });
+  } catch (err) { res.status(500).json(err); }
+};
+
+// permanent delete Buyer
+exports.deleteBuyerPermanent = async (req, res) => {
+  try {
+    await Buyer.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Permanently deleted' });
+  } catch (err) { res.status(500).json(err); }
+};
+
+// 🗑️🔨 bulk permanent delete (?ids=comma,separated)
+exports.bulkDeleteBuyers = async (req, res) => {
+  try {
+    const ids = (req.query.ids || '').split(',').filter(Boolean);
+    await Buyer.deleteMany({ _id: { $in: ids } });
+    res.json({ message: `Deleted ${ids.length} buyers` });
+  } catch (err) { res.status(500).json(err); }
+};

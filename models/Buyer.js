@@ -8,7 +8,9 @@ const buyerSchema = new mongoose.Schema({
     accountNumber: { type: String },
     officeAddress: { type: String },
     contactName:   { type: String },
-    phoneNumber:   { type: String }
+    phoneNumber:   { type: String },
+    isDeleted: { type: Boolean, default: false },
+    deletedAt: { type: Date }
 
   },{ timestamps: true }
 );

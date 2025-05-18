@@ -3,6 +3,14 @@ const c = require('../controllers/seller.controller');
 
 const router = express.Router();
 
+// routes/seller.routes.js
+router.patch('/:id/trash',     c.trashSeller);
+router.get('/trash',           c.getTrashSellers);
+router.patch('/:id/restore',   c.restoreSeller);
+router.delete('/:id/permanent',c.deleteSellerPermanent);
+router.delete('/trash/bulk',   c.bulkDeleteSellers);
+
+
 router.post('/', c.createSeller);
 router.get('/', c.getSellers);
 router.get('/search', c.searchSellers);
