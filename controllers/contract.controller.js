@@ -1,5 +1,6 @@
 const PDFDocument = require('pdfkit')
 const Contract = require('../models/Contract');
+const { mongo, default: mongoose } = require('mongoose');
 
 // @desc Create a new contract.
 exports.createContract = async(req, res) => {
@@ -26,8 +27,71 @@ exports.createContract = async(req, res) => {
 // @desc Get all contracts
 exports.getAllContracts = async(req, res) => {
   try {
-    const contracts = await Contract.find();
-    res.status(200).json(contracts);
+    // const contracts = await Contract.find();
+    // res.status(200).json(contracts);
+
+    const{
+      commodity,
+      grade,
+      contractNumber,
+      tonnesMin,
+      tonnesMax,
+      buyerId,
+      page = 1,
+      limit = 20,
+      sortBy = 'createdAt',
+      sortDir = 'desc'
+    } = req.query;
+
+    // dynamic filter object.
+    const filter = {isDeleted: false};
+
+    if(commodity){
+      filter.commodity = new RegExp(commodity, 'i');  // case insensitive partial
+    }
+
+    if(grade){
+      filter.grade = grade;
+    }
+
+    if(contractNumber){
+      filter.contractNumber = contractNumber.toUpperCase();
+    }
+
+    if(buyerId && mongoose.Types.ObjectId.isValid(buyerId)){
+      filter.buyerId = buyerId;
+    }
+
+    if(tonnesMin || tonnesMax){
+      filter.weights = {};
+
+      if(tonnesMin){
+        filter.weights.$gte = Number(tonnesMin);
+      }
+      if(tonnesMax){
+        filter.weights.$lte = Number(tonnesMax);
+      }
+    }
+
+    // query with pagination and sorting.
+    const skip = (Number(page) -1) * Number(limit);
+    const sort = { [sortBy]: sortDir ==='asc' ? 1: -1 };
+
+    const [data, total] = await Promise.all([
+      Contract.find(filter)
+            .populate('buyer seller')
+            .sort(sort)
+            .skip(skip)
+            .limit(Number(limit)),
+      Contract.countDocuments(filter)
+    ]);
+
+    res.json({
+      page: Number(page),
+      totalPages: Math.ceil(total/limit),
+      total,
+      data
+    })
   }
   catch (error) {
     res.status(500).json({ message: 'Error fetching contracts', error });
