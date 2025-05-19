@@ -1,6 +1,7 @@
 const PDFDocument = require('pdfkit')
 const Contract = require('../models/Contract');
 const { mongo, default: mongoose } = require('mongoose');
+const { Parser } = require('json2csv');
 
 // @desc Create a new contract.
 exports.createContract = async(req, res) => {
@@ -71,6 +72,10 @@ exports.getAllContracts = async(req, res) => {
       if(tonnesMax){
         filter.weights.$lte = Number(tonnesMax);
       }
+    }
+
+    if(req.query.status){
+      filter.status = req.query.status;
     }
 
     // query with pagination and sorting.
@@ -226,6 +231,31 @@ exports.exportContractPDF = async(req, res) => {
   }
 }
 
+// @desc GET /api/contracts/:id/export-csv
+exports.exportContractCSV = async(req, res) =>{
+  try{
+    const contract = await Contract.findById(req.params.id)
+                                  .populate('buyer seller');
+
+    if(!contract){
+      return res.status(404).json({message: 'Contract not found'});
+    }
+
+    const json = [contract.toObject()];
+    const parser = new Parser({flatten: true});
+    const csv = parser.parse(json);
+
+    res.setHeader('Content-Type',        'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename=Contract_${contract.contractNumber}.csv`);
+    return res.send(csv);
+  }
+  catch(err){
+    console.error(err);
+    res.status(500).json({ message: 'Error generating CSV' });
+  }
+}
+
+
 // @desc Move to trash.
 exports.softDeleteContract = async(req, res) => {
   const { id } = req.params;
@@ -276,3 +306,5 @@ exports.getDeletedContracts = async(req, res) => {
   const trash = await Contract.find({ isDeleted: true }).sort({ deletedAt: -1 });
   res.json(trash);
 };
+
+

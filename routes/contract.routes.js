@@ -21,6 +21,7 @@ router.get('/:id', contractController.getContractById);
 router.put('/:id', upload, contractController.updateContract);
 router.delete('/:id', contractController.deleteContract);
 router.get('/:id/export-pdf', contractController.exportContractPDF);
+router.get('/:id/export-csv', contractController.exportContractCSV);
 router.get('/:id/preview', contractController.previewContract);
 
 

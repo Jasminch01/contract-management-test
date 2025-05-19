@@ -36,7 +36,13 @@ const contractSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
   isDeleted:   { type: Boolean, default: false },
-  deletedAt:   { type: Date }
+  deletedAt:   { type: Date },
+  status: {
+    type: String,
+    enum: ['Incomplete', 'Complete', 'Invoiced'],
+    default: 'Incomplete',
+    index: true
+  },
 });
 
 contractSchema.pre('save', async function (next) {
