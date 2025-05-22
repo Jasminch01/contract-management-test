@@ -2,6 +2,9 @@ const PDFDocument = require('pdfkit')
 const Contract = require('../models/Contract');
 const { mongo, default: mongoose } = require('mongoose');
 const { Parser } = require('json2csv');
+const {sendEmail} = require('../utils/mailer');
+const stream = require('stream');
+
 
 // @desc Create a new contract.
 exports.createContract = async(req, res) => {
@@ -307,4 +310,66 @@ exports.getDeletedContracts = async(req, res) => {
   res.json(trash);
 };
 
+exports.sendContractByEmail = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { recipient } = req.body; // buyer or seller
 
+    const contract = await Contract.findById(id).populate('buyer seller');
+
+    if (!contract)
+      return res.status(404).json({ message: 'Contract not found' });
+
+    const target = recipient === 'buyer' ? contract.buyer : contract.seller;
+
+    if(!target) {
+      console.log("Target not found (buyer or seller):", recipient);
+      return res.status(400).json({ message: 'Buyer/Seller not associated' });
+    }
+
+    if(!target.email)
+      return res.status(400).json({ message: 'Recipient email not available' });
+
+    // Generate PDF to memory
+    const bufferStream = new stream.PassThrough();
+    const doc = new PDFDocument();
+    let buffers = [];
+
+    doc.on('data', buffers.push.bind(buffers));
+    doc.on('end', async () => {
+      const pdfBuffer = Buffer.concat(buffers);
+
+      await sendEmail({
+        to: target.email,
+        subject: `Contract Details: ${contract.contractNumber}`,
+        text: `Please find the contract attached.`,
+        attachments: [
+          {
+            filename: `Contract_${contract.contractNumber}.pdf`,
+            content: pdfBuffer,
+          },
+        ],
+      });
+
+      res.status(200).json({ message: `Contract emailed to ${recipient}` });
+    });
+
+    doc.fontSize(20).text("Contract Details", { align: 'center' }).moveDown();
+
+    Object.entries(contract.toObject()).forEach(([key, value]) => {
+      if(value instanceof Date){
+        value = new Date(value).toLocaleDateString();
+      } 
+      else if(typeof value === 'object' && value !== null) {
+        value = JSON.stringify(value, null, 2);
+      }
+      doc.fontSize(12).text(`${key}: ${value}`);
+    });
+
+    doc.end();
+  } 
+  catch (err){
+    console.error(err);
+    res.status(500).json({ message: 'Error sending email' });
+  }
+};

@@ -17,7 +17,6 @@ connectDB();
 // creating app instance.
 const app = express();
 
-
 // middlewares
 app.use(cors());
 app.use(express.json());

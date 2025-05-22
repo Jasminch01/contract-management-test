@@ -24,6 +24,10 @@ router.get('/:id/export-pdf', contractController.exportContractPDF);
 router.get('/:id/export-csv', contractController.exportContractCSV);
 router.get('/:id/preview', contractController.previewContract);
 
+// Send email
+router.post('/:id/email', contractController.sendContractByEmail);
+
+
 
 
 module.exports = router;

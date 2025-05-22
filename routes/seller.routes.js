@@ -3,7 +3,6 @@ const c = require('../controllers/seller.controller');
 
 const router = express.Router();
 
-// routes/seller.routes.js
 router.patch('/:id/trash',     c.trashSeller);
 router.get('/trash',           c.getTrashSellers);
 router.patch('/:id/restore',   c.restoreSeller);
