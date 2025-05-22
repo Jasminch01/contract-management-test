@@ -10,6 +10,9 @@ const path = require('path');
 const buyerRoutes = require('./routes/buyer.routes.js')
 const sellerRoutes = require('./routes/seller.routes.js');
 const trashRoutes = require('./routes/trash.js');
+const priceBidRoutes = require('./routes/priceBidRoutes.js');
+const deliveredBidRoutes = require('./routes/deliveredBidRoutes.js');
+
 
 
 dotenv.config();
@@ -30,7 +33,9 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/contracts', contractRoutes);
 app.use('/api/buyers',  buyerRoutes);
 app.use('/api/sellers', sellerRoutes);
-app.use('/api/t', trashRoutes);
+app.use('/api', trashRoutes);
+app.use('/api/price-bids', priceBidRoutes);
+app.use('/api/delivered-bids', deliveredBidRoutes);
 
 const PORT = process.env.PORT || 5000;
 
