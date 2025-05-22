@@ -9,9 +9,19 @@ exports.createSeller = async (req, res) => {
   }
 };
 
-exports.getSellers = async (_req, res) => {
+exports.getSellers = async (req, res) => {
   try {
-    const sellers = await Seller.find().sort({ createdAt: -1 });
+
+    const filter = req.query.filter;
+    let query = { isDeleted: false };
+
+    if(filter === 'last-week') {
+      const lastWeek = new Date();
+      lastWeek.setDate(lastWeek.getDate() - 7);
+      query.createdAt = { $gte: lastWeek };
+    }
+
+    const sellers = await Seller.find(query).sort({ createdAt: -1 });
     res.json(sellers);
   } catch (err) {
     res.status(500).json(err);

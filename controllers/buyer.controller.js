@@ -12,8 +12,19 @@ exports.createBuyer = async(req, res) => {
 
 exports.getBuyers = async(req, res) => {
     try {
-        const buyers = await Buyer.find().sort({ createdAt: -1});
-        res.json(buyers)
+        // const buyers = await Buyer.find().sort({ createdAt: -1});
+        // res.json(buyers)
+        const filter = req.query.filter;
+        let query = { isDeleted: false };
+
+        if(filter === 'last-week'){
+          const lastWeek = new Date();
+          lastWeek.setDate(lastWeek.getDate()-7);
+          query.createdAt = { $gte: lastWeek };
+        }
+
+        const buyers = await Buyer.find(query).sort({ createdAt: -1 });
+        res.status(200).json(buyers);
     } 
     catch (error) {
         res.status(500).json(error);
