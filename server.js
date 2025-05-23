@@ -12,6 +12,8 @@ const sellerRoutes = require('./routes/seller.routes.js');
 const trashRoutes = require('./routes/trash.js');
 const priceBidRoutes = require('./routes/priceBidRoutes.js');
 const deliveredBidRoutes = require('./routes/deliveredBidRoutes.js');
+const authRoutes = require('./routes/auth.js');
+const authMiddleware = require('./middelwares/authMiddleware.js');
 
 
 
@@ -30,12 +32,13 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 
 // Contract API route
-app.use('/api/contracts', contractRoutes);
-app.use('/api/buyers',  buyerRoutes);
-app.use('/api/sellers', sellerRoutes);
-app.use('/api', trashRoutes);
-app.use('/api/price-bids', priceBidRoutes);
-app.use('/api/delivered-bids', deliveredBidRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/contracts', authMiddleware, contractRoutes);
+app.use('/api/buyers', authMiddleware, buyerRoutes);
+app.use('/api/sellers', authMiddleware, sellerRoutes);
+app.use('/api', authMiddleware, trashRoutes);
+app.use('/api/price-bids', authMiddleware, priceBidRoutes);
+app.use('/api/delivered-bids', authMiddleware, deliveredBidRoutes);
 
 const PORT = process.env.PORT || 5000;
 
