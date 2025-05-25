@@ -14,6 +14,7 @@ const priceBidRoutes = require('./routes/priceBidRoutes.js');
 const deliveredBidRoutes = require('./routes/deliveredBidRoutes.js');
 const authRoutes = require('./routes/auth.js');
 const authMiddleware = require('./middelwares/authMiddleware.js');
+const dashboardRoutes = require('./routes/dashboardRoutes.js');
 
 
 
@@ -39,6 +40,7 @@ app.use('/api/sellers', authMiddleware, sellerRoutes);
 app.use('/api', authMiddleware, trashRoutes);
 app.use('/api/price-bids', authMiddleware, priceBidRoutes);
 app.use('/api/delivered-bids', authMiddleware, deliveredBidRoutes);
+app.use('/api/dashboard', authMiddleware, dashboardRoutes);
 
 const PORT = process.env.PORT || 5000;
 

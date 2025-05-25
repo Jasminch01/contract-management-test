@@ -31,8 +31,17 @@ const contractSchema = new mongoose.Schema({
   deliveryDestination: String,
   brokeragePayableBy: String,
   specialCondition: String,
-  termsAndConditions: String,
+  termsAndConditions: String, 
   notes: String,
+  tonns:{
+    type: Number,
+    required: true
+  },
+  brokeragePayableBy: {
+    type: String,
+    enum: ['Buyer', 'Seller', 'Buyer & Seller', 'No Brokerage Payment'],
+    required: true,
+  },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
   isDeleted:   { type: Boolean, default: false },
