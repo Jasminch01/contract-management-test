@@ -37,6 +37,14 @@ const contractSchema = new mongoose.Schema({
     type: Number,
     required: true
   },
+  tolerance:{
+    type: String, // or Number depending on UI
+    required: false,
+  },
+  season:{
+    type: String, // Example: "Monsoon", "Winter"
+    required: false,
+  },
   brokeragePayableBy: {
     type: String,
     enum: ['Buyer', 'Seller', 'Buyer & Seller', 'No Brokerage Payment'],

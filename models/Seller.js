@@ -12,6 +12,13 @@ const sellerSchema = new mongoose.Schema({
     contactName:      { type: String },
     locationZone:     { type: String },
     phoneNumber:      { type: String },
+    locationZone:{
+        type: [String], // Multi-select zones
+        default: [],
+    },
+    authorityActFormPdf: {
+        type: String, // store the file path or URL
+    },
     isDeleted: { type: Boolean, default: false },
     deletedAt: { type: Date }
 },
