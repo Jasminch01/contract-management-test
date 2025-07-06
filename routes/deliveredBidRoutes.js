@@ -7,5 +7,6 @@ router.get('/', c.getDeliveredBids);
 router.get('/:id', c.getDeliveredBid);
 router.put('/:id', c.updateDeliveredBid);
 router.delete('/:id', c.deleteDeliveredBid);
+router.get('/export-csv', c.exportDeliveredBidsCSV);
 
 module.exports = router;

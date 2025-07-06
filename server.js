@@ -10,7 +10,7 @@ const path = require('path');
 const buyerRoutes = require('./routes/buyer.routes.js')
 const sellerRoutes = require('./routes/seller.routes.js');
 const trashRoutes = require('./routes/trash.js');
-const priceBidRoutes = require('./routes/priceBidRoutes.js');
+const portZoneBids = require('./routes/portZoneBidRoutes.js');
 const deliveredBidRoutes = require('./routes/deliveredBidRoutes.js');
 const authRoutes = require('./routes/auth.js');
 const authMiddleware = require('./middelwares/authMiddleware.js');
@@ -38,7 +38,7 @@ app.use('/api/contracts', authMiddleware, contractRoutes);
 app.use('/api/buyers', authMiddleware, buyerRoutes);
 app.use('/api/sellers', authMiddleware, sellerRoutes);
 app.use('/api', authMiddleware, trashRoutes);
-app.use('/api/price-bids', authMiddleware, priceBidRoutes);
+app.use('/api/portZone-bids', authMiddleware, portZoneBids);
 app.use('/api/delivered-bids', authMiddleware, deliveredBidRoutes);
 app.use('/api/dashboard', authMiddleware, dashboardRoutes);
 
