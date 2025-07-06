@@ -1,13 +1,53 @@
 const Seller = require('../models/Seller');
 
-exports.createSeller = async (req, res) => {
-  try {
-    const seller = await Seller.create(req.body);
+exports.createSeller = async(req, res) =>{
+  try{
+    const{
+      legalName,
+      abn,
+      additionalNgrs,
+      accountNumber,
+      email,
+      authorityToAct,
+      address,
+      mainNgr,
+      contactName,
+      phoneNumber,
+      locationZone,
+      bulkHandlerCredentials
+    } = req.body;
+
+    // If sent as JSON string (from frontend form submission)
+    const parsedBulkHandlerCredentials = typeof bulkHandlerCredentials === 'string'
+      ? JSON.parse(bulkHandlerCredentials)
+      : bulkHandlerCredentials;
+
+    const authorityActFormPdfPath = req.files?.authorityActFormPdf?.[0]?.path || null;
+
+    const seller = await Seller.create({
+      legalName,
+      abn,
+      additionalNgrs: Array.isArray(additionalNgrs) ? additionalNgrs : [additionalNgrs],
+      accountNumber,
+      email,
+      authorityToAct,
+      address,
+      mainNgr,
+      contactName,
+      phoneNumber,
+      locationZone: Array.isArray(locationZone) ? locationZone : [locationZone],
+      authorityActFormPdf: authorityActFormPdfPath,
+      bulkHandlerCredentials: parsedBulkHandlerCredentials,
+    });
+
     res.status(201).json(seller);
-  } catch (err) {
-    res.status(400).json({ message: 'Seller creation failed', err });
+  } 
+  catch(err){
+    console.error('Error creating seller:', err);
+    res.status(400).json({ message: 'Seller creation failed', error: err.message });
   }
 };
+
 
 exports.getSellers = async (req, res) => {
   try {

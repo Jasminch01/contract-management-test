@@ -1,7 +1,8 @@
 const express = require('express');
-const c = require('../controllers/seller.controller');
-
 const router = express.Router();
+const c = require('../controllers/seller.controller');
+const upload = require('../middelwares/upload.middleware');
+
 
 router.patch('/:id/trash',     c.trashSeller);
 router.get('/trash',           c.getTrashSellers);
@@ -10,7 +11,7 @@ router.delete('/:id/permanent',c.deleteSellerPermanent);
 router.delete('/trash/bulk',   c.bulkDeleteSellers);
 
 
-router.post('/', c.createSeller);
+router.post('/', upload,c.createSeller);
 router.get('/', c.getSellers);
 router.get('/search', c.searchSellers);
 router.get('/:id', c.getSeller);

@@ -19,6 +19,26 @@ const sellerSchema = new mongoose.Schema({
     authorityActFormPdf: {
         type: String, // store the file path or URL
     },
+    
+    // Bulk Handler credentials
+    bulkHandlerCredentials: [
+        {
+            handlerName: {
+                type: String,
+                enum: [
+                    'Viterra',
+                    'Graincorp',
+                    'GrainFlow',
+                    'Tports',
+                    'CBH',
+                    'Louis Dreyfus',
+                ],
+                required: true
+            },
+            identifier: String,    // Username / Email / PAN no
+            password: String
+        }
+    ],
     isDeleted: { type: Boolean, default: false },
     deletedAt: { type: Date }
 },
