@@ -22,7 +22,10 @@ exports.createSeller = async(req, res) =>{
       ? JSON.parse(bulkHandlerCredentials)
       : bulkHandlerCredentials;
 
-    const authorityActFormPdfPath = req.files?.authorityActFormPdf?.[0]?.path || null;
+    const authorityActFormPdfFile = req.files?.authorityActFormPdf?.[0];
+    const authorityActFormPdfPath = authorityActFormPdfFile
+      ? `{req.protocol}://${req.get('host')}/uploads/${authorityActFormPdfFile.filename}`
+      : null;
 
     const seller = await Seller.create({
       legalName,
@@ -40,7 +43,9 @@ exports.createSeller = async(req, res) =>{
       bulkHandlerCredentials: parsedBulkHandlerCredentials,
     });
 
-    res.status(201).json(seller);
+    res.status(201).json({
+      message: 'Seller created successfully', seller
+    });
   } 
   catch(err){
     console.error('Error creating seller:', err);
