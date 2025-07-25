@@ -52,3 +52,33 @@ exports.bulkDeleteTrash = async(req, res) =>{
         res.status(500).json({message: 'Server error'});
     }
 }
+
+exports.bulkRestoreTrash = async(req, res) =>{
+    const {buyers = [], sellers = [], contracts = []} = req.body;
+
+    try{
+        const buyerRestore = buyers.length > 0 
+            ? await Buyer.updateMany({_id: { $in: buyers }}, { isDeleted: false, deletedAt: null }) 
+            : null;
+
+        const sellerRestore = sellers.length > 0 
+            ? await Seller.updateMany({_id: { $in: sellers }}, { isDeleted: false, deletedAt: null }) 
+            : null;
+        const contractRestore = contracts.length > 0 
+            ? await Contract.updateMany({_id: { $in: contracts }}, { isDeleted: false, deletedAt: null }) 
+            : null;
+
+        res.status(200).json({
+            message: 'Bulk restore successful',
+            restored:{
+                buyers: buyerRestore?.modifiedCount || 0,
+                sellers: sellerRestore?.modifiedCount || 0,
+                contracts: contractRestore?.modifiedCount || 0,
+            },
+        });
+    }
+    catch(error){
+        console.error(error);
+        res.status(500).json({message: 'Server error', error: error.message});
+    }
+}

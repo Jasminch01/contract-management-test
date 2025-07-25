@@ -76,19 +76,25 @@ exports.getSellers = async (req, res) => {
 exports.getSeller = async (req, res) => {
   try {
     const seller = await Seller.findById(req.params.id);
-    if (!seller) return res.status(404).json({ message: 'Not found' });
+    if(!seller) {
+      return res.status(404).json({ message: 'Not found' });
+    }
     res.json(seller);
-  } catch (err) {
+  }
+  catch(err){
     res.status(500).json(err);
   }
 };
 
 exports.updateSeller = async (req, res) => {
-  try {
+  try{
     const seller = await Seller.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!seller) return res.status(404).json({ message: 'Not found' });
+    if(!seller){
+      return res.status(404).json({ message: 'Not found' });
+    }
     res.json(seller);
-  } catch (err) {
+  } 
+  catch(err){
     res.status(400).json(err);
   }
 };
@@ -97,7 +103,8 @@ exports.deleteSeller = async (req, res) => {
   try {
     await Seller.findByIdAndDelete(req.params.id);
     res.json({ message: 'Seller deleted' });
-  } catch (err) {
+  } 
+  catch(err){
     res.status(500).json(err);
   }
 };
@@ -117,7 +124,7 @@ exports.searchSellers = async (req, res) => {
   }
 };
 
-// move single Buyer to trash
+// move single Seller to trash
 exports.trashSeller = async (req, res) => {
   try {
     const b = await Seller.findByIdAndUpdate(
@@ -125,12 +132,18 @@ exports.trashSeller = async (req, res) => {
       { isDeleted: true, deletedAt: new Date() },
       { new: true }
     );
-    if (!b) return res.status(404).json({ message: 'Not found' });
+
+    if(!b){
+       return res.status(404).json({ message: 'Not found' });
+    }
     res.json({ message: 'Moved to rubbish bin', b });
-  } catch (err) { res.status(500).json(err); }
+  }
+  catch(err){ 
+    res.status(500).json(err); 
+  }
 };
 
-// list trashed Buyers
+// list trashed Sellers
 exports.getTrashSellers = async (_req, res) => {
   try {
     const list = await Seller.find({ isDeleted: true }).sort({ deletedAt: -1 });
@@ -138,7 +151,7 @@ exports.getTrashSellers = async (_req, res) => {
   } catch (err) { res.status(500).json(err); }
 };
 
-// restore Buyer
+// restore Seller
 exports.restoreSeller = async (req, res) => {
   try {
     const b = await Seller.findByIdAndUpdate(
@@ -151,7 +164,7 @@ exports.restoreSeller = async (req, res) => {
   } catch (err) { res.status(500).json(err); }
 };
 
-// permanent delete Buyer
+// permanent delete Seller
 exports.deleteSellerPermanent = async (req, res) => {
   try {
     await Seller.findByIdAndDelete(req.params.id);
