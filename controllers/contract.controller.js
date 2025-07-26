@@ -42,7 +42,7 @@ exports.getAllContracts = async(req, res) => {
       tonnesMax,
       buyerId,
       page = 1,
-      limit = 20,
+      limit = 10,
       sortBy = 'createdAt',
       sortDir = 'desc'
     } = req.query;
