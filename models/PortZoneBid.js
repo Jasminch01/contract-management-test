@@ -20,6 +20,10 @@ const portZoneBidSchema = new mongoose.Schema(
       required: true,
       match: /^\d{2}\/\d{2}$/, // e.g., 24/25
     },
+    date: {
+      type: Date,
+      required: true,
+    },
     // Bid types (editable fields)
     APW1: { type: Number, default: null },
     H1: { type: Number, default: null },
@@ -45,4 +49,5 @@ const portZoneBidSchema = new mongoose.Schema(
   }
 );
 
+portZoneBidSchema.index({ label: 1, season: 1, date: 1 }, { unique: true });
 module.exports = mongoose.model('PortZoneBid', portZoneBidSchema);

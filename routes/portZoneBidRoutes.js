@@ -2,10 +2,9 @@ const express = require('express');
 const router = express.Router();
 const portZoneBidController = require('../controllers/portZoneBidController');
 
-router.post('/', portZoneBidController.createPortZoneBid);
+router.post('/', portZoneBidController.createOrUpdatePortZoneBid);
 router.get('/', portZoneBidController.getPortZoneBids);
 router.get('/:id', portZoneBidController.getPortZoneBid);
-router.put('/:id', portZoneBidController.updatePortZoneBid);
 router.delete('/:id', portZoneBidController.deletePortZoneBid);
 
 // CSV Export route

@@ -9,6 +9,10 @@ const deliveredBidSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    date:{
+        type: Date,
+        required: true
+    },
     monthlyValues: {
         January: { type: Number, default: 0 },
         February: { type: Number, default: 0 },
@@ -28,5 +32,7 @@ const deliveredBidSchema = new mongoose.Schema({
         default: Date.now
     }
 });
+
+deliveredBidSchema.index({label: 1, season: 1, date: 1}, {unique: true});
 
 module.exports = mongoose.model('DeliverdBid', deliveredBidSchema);

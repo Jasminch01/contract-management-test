@@ -1,22 +1,48 @@
 const { Parser } = require('json2csv');
 const DeliveredBid = require('../models/DeliveredBid');
 
-exports.createDeliveredBid = async (req, res) => {
+exports.createOrUpdateDeliveredBid = async (req, res) => {
   try {
-    const {label, season,  monthlyValues} = req.body;
-    
-    const bid = await DeliveredBid.create({labe, season, monthlyValues});
+    const { label, season, date, monthlyValues } = req.body;
 
-    res.status(201).json(bid);
+    if(!label || !season || !date){
+      return res.status(400).json({ message: 'label, season and date are required.' });
+    }
+
+    // Prepare update payload
+    const monthlyUpdates = {};
+    const allowedMonths = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+
+    for(const key of allowedMonths){
+      if(monthlyValues[key] !== undefined){
+        monthlyUpdates[`monthlyValues.${key}`] = monthlyValues[key];
+      }
+    }
+
+    const updatedBid = await DeliveredBid.findOneAndUpdate(
+      { label, season, date: new Date(date) },
+      {
+        $set: {
+          ...monthlyUpdates,
+          updatedAt: new Date()
+        }
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    res.status(200).json(updatedBid);
   } 
   catch(error){
-    res.status(400).json({ message: error.message });
+    res.status(500).json({ message: error.message });
   }
 };
 
 exports.getDeliveredBids = async (req, res) => {
   try {
-    const {season, startDate, endDate} = req.query;
+    const { season, date } = req.query;
 
     const filter = {};
 
@@ -24,13 +50,8 @@ exports.getDeliveredBids = async (req, res) => {
     if(season){
       filter.season = season;
     }
-
-    // start date and end date filtering.
-    if(startDate && endDate){
-      filter.updatedAt = {
-        $gte: new Date(startDate),
-        $lte: new Date(endDate)
-      };
+    if(date){
+      filter.date = new Date(date);
     }
 
     const bids = await DeliveredBid.find(filter);
@@ -51,35 +72,6 @@ exports.getDeliveredBid = async (req, res) => {
   }
 };
 
-exports.updateDeliveredBid = async (req, res) => {
-  try {
-    const allowedMonths = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
-    ];
-
-    const monthlyUpdates = {};
-
-    for(const key of allowedMonths){
-      if(req.body[key] !== undefined){
-        monthlyUpdates[`monthlyValues.${key}`] = req.body[key];
-      }
-    }
-
-    const updated = await DeliveredBid.findByIdAndUpdate(
-      req.params.id,
-      {
-        $set: monthlyUpdates,
-        updatedAt: new Date()
-      },
-      {new: true}
-    );
-
-    res.json(updated);
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
-};
 
 exports.deleteDeliveredBid = async(req, res) =>{
   try{
