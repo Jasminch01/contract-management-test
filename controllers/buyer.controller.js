@@ -29,7 +29,7 @@ exports.getBuyers = async(req, res) => {
         const skip = (page - 1) * limit;
 
         const [buyers, total] = await Promise.all([
-          Buyers.find(query).sort({createdAt: -1})
+          Buyer.find(query).sort({createdAt: -1})
             .skip(skip)
             .limit(limit),
           Buyer.countDocuments(query)

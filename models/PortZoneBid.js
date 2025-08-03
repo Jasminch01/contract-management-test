@@ -41,8 +41,8 @@ const portZoneBidSchema = new mongoose.Schema(
     'NIP/HAL': { type: Number, default: null },
 
     // Optional: user tracking (if needed)
-    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    // createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    // updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   },
   {
     timestamps: true, // adds createdAt and updatedAt

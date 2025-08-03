@@ -13,7 +13,6 @@ router.patch('/:id/trash', contractController.softDeleteContract);
 router.patch('/:id/restore', contractController.restoreContract);
 router.delete('/:id/permanent', contractController.hardDeleteContract);
 
-
 // create contract with file upload.
 router.post('/', upload, contractController.createContract);
 router.get('/', contractController.getAllContracts);

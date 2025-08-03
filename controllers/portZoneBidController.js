@@ -1,13 +1,15 @@
-const { Parser } = require('json2csv');
-const PortZoneBid = require('../models/PortZoneBid');
+const { Parser } = require("json2csv");
+const PortZoneBid = require("../models/PortZoneBid");
 
 // Create or update port zone bid by label+season+date
 exports.createOrUpdatePortZoneBid = async (req, res) => {
-  try{
+  try {
     const { label, season, date } = req.body;
 
-    if(!label || !season || !date){
-      return res.status(400).json({ message: 'label, season, and date are required.' });
+    if (!label || !season || !date) {
+      return res
+        .status(400)
+        .json({ message: "label, season, and date are required." });
     }
 
     const updatedBid = await PortZoneBid.findOneAndUpdate(
@@ -16,31 +18,29 @@ exports.createOrUpdatePortZoneBid = async (req, res) => {
       { new: true, upsert: true, setDefaultsOnInsert: true }
     );
 
-    res.status(200).json(updatedBid);
-  }
-  catch(error){
-    if(error.code === 11000){
-      return res.status(400).json({ message: 'Duplicate entry for label, season and date' });
+    res.status(200).json({data : updatedBid});
+  } catch (error) {
+    if (error.code === 11000) {
+      return res
+        .status(400)
+        .json({ message: "Duplicate entry for label, season and date" });
     }
     res.status(500).json({ message: error.message });
   }
 };
 
-
 // Get all port zone bids (with query support)
-exports.getPortZoneBids = async(req, res) =>{
+exports.getPortZoneBids = async (req, res) => {
   try {
     const { season, date, startDate, endDate } = req.query;
-
     const filter = {};
-
     // Filter by season (e.g., 24/25)
-    if(season){
+    if (season) {
       filter.season = season;
     }
 
     // Filter by specific date (matches same calendar day on updatedAt)
-    if(date){
+    if (date) {
       const parsedDate = new Date(date);
       const nextDay = new Date(parsedDate);
       nextDay.setDate(parsedDate.getDate() + 1);
@@ -52,7 +52,7 @@ exports.getPortZoneBids = async(req, res) =>{
     }
 
     // Filter by range (startDate to endDate)
-    if(startDate && endDate){
+    if (startDate && endDate) {
       filter.updatedAt = {
         $gte: new Date(startDate),
         $lte: new Date(endDate),
@@ -60,36 +60,32 @@ exports.getPortZoneBids = async(req, res) =>{
     }
 
     const bids = await PortZoneBid.find(filter);
-    res.status(200).json(bids);
-  } 
-  catch(error){
-    console.error('Error fetching Port Zone Bids:', error);
+    res.status(200).json({data: bids});
+  } catch (error) {
+    console.error("Error fetching Port Zone Bids:", error);
     res.status(500).json({ message: error.message });
   }
 };
 
 // Get specific port zone bid by ID
-exports.getPortZoneBid = async(req, res) =>{
+exports.getPortZoneBid = async (req, res) => {
   try {
     const bid = await PortZoneBid.findById(req.params.id);
-    if(!bid){
-      return res.status(404).json({ message: 'Not found' });
+    if (!bid) {
+      return res.status(404).json({ message: "Not found" });
     }
-    res.json(bid);
-  } 
-  catch(error){
+    res.json({data : bid});
+  } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-
 // Delete a port zone bid
-exports.deletePortZoneBid = async (req, res) =>{
-  try{
+exports.deletePortZoneBid = async (req, res) => {
+  try {
     await PortZoneBid.findByIdAndDelete(req.params.id);
-    res.json({ message: 'Deleted successfully' });
-  } 
-  catch(error){
+    res.json({ message: "Deleted successfully" });
+  } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
@@ -100,11 +96,11 @@ exports.exportPortZoneBidsCSV = async (req, res) => {
     const { season, startDate, endDate } = req.query;
 
     const filter = {};
-    if(season){
+    if (season) {
       filter.season = season;
     }
-    if(startDate && endDate){
-      filter.updatedAt ={
+    if (startDate && endDate) {
+      filter.updatedAt = {
         $gte: new Date(startDate),
         $lte: new Date(endDate),
       };
@@ -112,35 +108,49 @@ exports.exportPortZoneBidsCSV = async (req, res) => {
 
     const bids = await PortZoneBid.find(filter).lean();
 
-    if(!bids.length){
-      return res.status(404).json({ message: 'No data found for export.' });
+    if (!bids.length) {
+      return res.status(404).json({ message: "No data found for export." });
     }
 
-    const bidTypes = ['APW1', 'H1', 'H2', 'AUH2', 'ASW1', 'AGP1', 'SFW1', 'BAR1', 'MA1', 'CM1', 'COMD', 'CANS', 'FIEV', 'NIP/HAL'];
+    const bidTypes = [
+      "APW1",
+      "H1",
+      "H2",
+      "AUH2",
+      "ASW1",
+      "AGP1",
+      "SFW1",
+      "BAR1",
+      "MA1",
+      "CM1",
+      "COMD",
+      "CANS",
+      "FIEV",
+      "NIP/HAL",
+    ];
 
-    const data = bids.map(bid => {
+    const data = bids.map((bid) => {
       const row = {
         PortZone: bid.label,
         Season: bid.season,
         UpdatedAt: bid.updatedAt,
       };
 
-      bidTypes.forEach(type => {
-        row[type] = bid[type] || '';
+      bidTypes.forEach((type) => {
+        row[type] = bid[type] || "";
       });
 
       return row;
     });
 
-    const fields = ['PortZone', 'Season', ...bidTypes, 'UpdatedAt'];
+    const fields = ["PortZone", "Season", ...bidTypes, "UpdatedAt"];
     const parser = new Parser({ fields });
     const csv = parser.parse(data);
 
-    res.header('Content-Type', 'text/csv');
-    res.attachment(`port_zone_bids_${season || 'all'}_${Date.now()}.csv`);
+    res.header("Content-Type", "text/csv");
+    res.attachment(`port_zone_bids_${season || "all"}_${Date.now()}.csv`);
     return res.send(csv);
-  } 
-  catch(error){
+  } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };

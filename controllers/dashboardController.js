@@ -5,7 +5,7 @@ const calculateCommission = (contracts) => {
     return contracts.reduce((sum, c) => {
         if(c.status === 'Complete'){
             const rate = parseFloat(c.brokerRate) || 0;
-            const tonns = parseFloat(c.tonns) || 0;
+            const tonns = parseFloat(c.tonnes) || 0;
             let multiplier = 0;
 
             if(c.brokeragePayableBy === 'Buyer & Seller'){
@@ -86,8 +86,7 @@ exports.getProgressChartData = async (req, res) => {
     const notDone = contracts.length - done;
 
     res.json({
-      labels: ['Done', 'Not Done'],
-      data: [done, notDone]
+      data: {"done" : done , "notDone" : notDone}
     });
   } catch (err) {
     res.status(500).json({ message: 'Error fetching progress data', err });
