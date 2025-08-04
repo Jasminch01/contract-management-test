@@ -5,6 +5,7 @@ const TrashController = require('../controllers/trashController');
 router.get('/trash', TrashController.getTrashBin);
 router.delete('/trash/bulk', TrashController.bulkDeleteTrash);
 router.delete('/trash/permanent', TrashController.permanentDeleteTrash);
+router.delete('/trash/empty', TrashController.permanentDeleteTrash);
 router.post('/trash/bulk/restore', TrashController.bulkRestoreTrash);
 
 module.exports = router;

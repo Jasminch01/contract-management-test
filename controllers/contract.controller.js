@@ -7,7 +7,6 @@ const stream = require("stream");
 
 // @desc Create a new contract.
 exports.createContract = async (req, res) => {
-  console.log(req.body);
   try {
     const data = req.body;
 
@@ -143,11 +142,9 @@ exports.updateContract = async (req, res) => {
     if (!updated) {
       return res.status(400).json({ message: "Contract not found" });
     }
-    console.log(updated);
     res.status(200).json(updated);
   } catch (error) {
     res.status(500).json({ message: "Error updating contract", error });
-    console.log(error);
   }
 };
 
