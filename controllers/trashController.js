@@ -58,6 +58,27 @@ exports.bulkDeleteTrash = async (req, res) => {
   }
 };
 
+exports.emptyAllTrash = async (req, res) => {
+  try {
+    Buyer.deleteMany()
+    Seller.deleteMany()
+    Contract.deleteMany()
+
+    res.status(200).json({
+      success: true,
+      message: "All trash emptied successfully",
+      deletedCounts: {
+        buyers: buyerDelete.deletedCount,
+        sellers: sellerDelete.deletedCount,
+        contracts: contractDelete.deletedCount,
+      },
+    });
+  } catch (error) {
+    console.error("Error emptying trash:", error);
+    res.status(500).json({ success: false, message: "Failed to empty trash" });
+  }
+};
+
 exports.bulkRestoreTrash = async (req, res) => {
   const { itemIds = [] } = req.body;
   if (!itemIds || itemIds.length === 0) {

@@ -2,6 +2,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const dotenv = require("dotenv");
+const cookieParser = require("cookie-parser");
 
 // importing external files.
 const connectDB = require("./config/db.js");
@@ -23,21 +24,29 @@ connectDB();
 const app = express();
 
 // middlewares
-app.use(cors());
+app.use(
+  cors({
+    origin: "http://localhost:3000",
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
+  })
+);
 app.use(express.json());
+app.use(cookieParser());
 
 // Serve uploaded files
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Contract API route
 app.use("/api/auth", authRoutes);
-app.use("/api/contracts", contractRoutes);
-app.use("/api/buyers", buyerRoutes);
-app.use("/api/sellers", sellerRoutes);
-app.use("/api", trashRoutes);
-app.use("/api/portZone-bids", portZoneBids);
-app.use("/api/delivered-bids", deliveredBidRoutes);
-app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/contracts", authMiddleware, contractRoutes);
+app.use("/api/buyers", authMiddleware, buyerRoutes);
+app.use("/api/sellers", authMiddleware, sellerRoutes);
+app.use("/api", authMiddleware, trashRoutes);
+app.use("/api/portZone-bids", authMiddleware, portZoneBids);
+app.use("/api/delivered-bids", authMiddleware, deliveredBidRoutes);
+app.use("/api/dashboard", authMiddleware, dashboardRoutes);
 
 const PORT = process.env.PORT || 5000;
 
