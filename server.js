@@ -36,6 +36,9 @@ app.use(express.json());
 app.use(cookieParser());
 
 
+
+///
+
 // Contract API route
 app.use("/api/auth", authRoutes);
 app.use("/api/contracts", authMiddleware, contractRoutes);
