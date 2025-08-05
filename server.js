@@ -36,12 +36,6 @@ app.use(express.json());
 app.use(cookieParser());
 
 
-
-app.use('/', (req, res) =>{
-  // console.log("API is running");
-  res.json({ message: "API is running" });
-})
-
 // Contract API route
 app.use("/api/auth", authRoutes);
 app.use("/api/contracts",contractRoutes);
@@ -51,6 +45,11 @@ app.use("/api", authMiddleware, trashRoutes);
 app.use("/api/portZone-bids", authMiddleware, portZoneBids);
 app.use("/api/delivered-bids", authMiddleware, deliveredBidRoutes);
 app.use("/api/dashboard", authMiddleware, dashboardRoutes);
+
+app.use('/', (req, res) =>{
+  // console.log("API is running");
+  res.json({ message: "API is running" });
+})
 
 const PORT = process.env.PORT || 5000;
 
