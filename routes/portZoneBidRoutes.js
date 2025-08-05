@@ -8,6 +8,6 @@ router.get('/:id', portZoneBidController.getPortZoneBid);
 router.delete('/:id', portZoneBidController.deletePortZoneBid);
 
 // CSV Export route
-router.get('/export-csv', portZoneBidController.exportPortZoneBidsCSV);
+router.get('/export', portZoneBidController.exportPortZoneBidsCSV);
 
 module.exports = router;

@@ -25,6 +25,7 @@ exports.createOrUpdatePortZoneBid = async (req, res) => {
         .status(400)
         .json({ message: "Duplicate entry for label, season and date" });
     }
+    console.log(error)
     res.status(500).json({ message: error.message });
   }
 };
@@ -92,65 +93,65 @@ exports.deletePortZoneBid = async (req, res) => {
 
 // Export port zone bids to CSV
 exports.exportPortZoneBidsCSV = async (req, res) => {
-  try {
+  // try {
     const { season, startDate, endDate } = req.query;
+console.log(season, startDate, endDate)
+  //   const filter = {};
+  //   if (season) {
+  //     filter.season = season;
+  //   }
+  //   if (startDate && endDate) {
+  //     filter.updatedAt = {
+  //       $gte: new Date(startDate),
+  //       $lte: new Date(endDate),
+  //     };
+  //   }
 
-    const filter = {};
-    if (season) {
-      filter.season = season;
-    }
-    if (startDate && endDate) {
-      filter.updatedAt = {
-        $gte: new Date(startDate),
-        $lte: new Date(endDate),
-      };
-    }
+  //   const bids = await PortZoneBid.find(filter).lean();
 
-    const bids = await PortZoneBid.find(filter).lean();
+  //   if (!bids.length) {
+  //     return res.status(404).json({ message: "No data found for export." });
+  //   }
 
-    if (!bids.length) {
-      return res.status(404).json({ message: "No data found for export." });
-    }
+  //   const bidTypes = [
+  //     "APW1",
+  //     "H1",
+  //     "H2",
+  //     "AUH2",
+  //     "ASW1",
+  //     "AGP1",
+  //     "SFW1",
+  //     "BAR1",
+  //     "MA1",
+  //     "CM1",
+  //     "COMD",
+  //     "CANS",
+  //     "FIEV",
+  //     "NIP/HAL",
+  //   ];
 
-    const bidTypes = [
-      "APW1",
-      "H1",
-      "H2",
-      "AUH2",
-      "ASW1",
-      "AGP1",
-      "SFW1",
-      "BAR1",
-      "MA1",
-      "CM1",
-      "COMD",
-      "CANS",
-      "FIEV",
-      "NIP/HAL",
-    ];
+  //   const data = bids.map((bid) => {
+  //     const row = {
+  //       PortZone: bid.label,
+  //       Season: bid.season,
+  //       UpdatedAt: bid.updatedAt,
+  //     };
 
-    const data = bids.map((bid) => {
-      const row = {
-        PortZone: bid.label,
-        Season: bid.season,
-        UpdatedAt: bid.updatedAt,
-      };
+  //     bidTypes.forEach((type) => {
+  //       row[type] = bid[type] || "";
+  //     });
 
-      bidTypes.forEach((type) => {
-        row[type] = bid[type] || "";
-      });
+  //     return row;
+  //   });
 
-      return row;
-    });
+  //   const fields = ["PortZone", "Season", ...bidTypes, "UpdatedAt"];
+  //   const parser = new Parser({ fields });
+  //   const csv = parser.parse(data);
 
-    const fields = ["PortZone", "Season", ...bidTypes, "UpdatedAt"];
-    const parser = new Parser({ fields });
-    const csv = parser.parse(data);
-
-    res.header("Content-Type", "text/csv");
-    res.attachment(`port_zone_bids_${season || "all"}_${Date.now()}.csv`);
-    return res.send(csv);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
+  //   res.header("Content-Type", "text/csv");
+  //   res.attachment(`port_zone_bids_${season || "all"}_${Date.now()}.csv`);
+  //   return res.send(csv);
+  // } catch (error) {
+  //   res.status(500).json({ message: error.message });
+  // }
 };
