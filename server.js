@@ -3,7 +3,6 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const cookieParser = require("cookie-parser");
-const {createUploadthingExpressHandler} = require('uploadthing/express');
 
 // importing external files.
 const connectDB = require("./config/db.js");
@@ -17,7 +16,6 @@ const deliveredBidRoutes = require("./routes/deliveredBidRoutes.js");
 const authRoutes = require("./routes/auth.js");
 const authMiddleware = require("./middelwares/authMiddleware.js");
 const dashboardRoutes = require("./routes/dashboardRoutes.js");
-const {fileRouter} = require('./utils/uploadthing.js');
 
 dotenv.config();
 connectDB();
@@ -28,7 +26,7 @@ const app = express();
 // middlewares
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: ["http://localhost:3000", "https://contract-management-livid.vercel.app"],
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
@@ -40,15 +38,6 @@ app.use(cookieParser());
 // Serve uploaded files
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-app.use(
-  '/api/uploadthing',
-  createUploadthingExpressHandler({
-    roueter: fileRouter,
-    config:{
-      uploadthingSecret: process.env.UPLOADTHING_TOKEN,
-    },
-  })
-)
 
 // Contract API route
 app.use("/api/auth", authRoutes);
