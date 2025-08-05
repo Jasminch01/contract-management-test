@@ -35,8 +35,7 @@ app.use(
 app.use(express.json());
 app.use(cookieParser());
 
-// Serve uploaded files
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
 
 app.use('/', (req, res) =>{
   // console.log("API is running");
@@ -45,7 +44,7 @@ app.use('/', (req, res) =>{
 
 // Contract API route
 app.use("/api/auth", authRoutes);
-app.use("/api/contracts", authMiddleware, contractRoutes);
+app.use("/api/contracts",contractRoutes);
 app.use("/api/buyers", authMiddleware, buyerRoutes);
 app.use("/api/sellers", authMiddleware, sellerRoutes);
 app.use("/api", authMiddleware, trashRoutes);
