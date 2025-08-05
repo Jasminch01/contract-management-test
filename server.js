@@ -38,6 +38,10 @@ app.use(cookieParser());
 // Serve uploaded files
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
+app.use('/', (req, res) =>{
+  // console.log("API is running");
+  res.json({ message: "API is running" });
+})
 
 // Contract API route
 app.use("/api/auth", authRoutes);
