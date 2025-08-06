@@ -21,6 +21,8 @@ router.post("/login", async (req, res) => {
     httpOnly: true,
     secure: isProduction, // Only secure in production
     sameSite: isProduction ? "none" : "lax", // "none" requires secure
+    maxAge: 60 * 60 * 24 * 7,
+    path: "/",
   });
 
   res.json({
