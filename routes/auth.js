@@ -19,8 +19,8 @@ router.post("/login", async (req, res) => {
 
   res.cookie("token", token, {
     httpOnly: true,
-    secure: isProduction, // Only secure in production
-    sameSite: isProduction ? "none" : "lax", // "none" requires secure
+    secure: false, // Only secure in production
+    sameSite: "no"
   });
 
   res.json({
