@@ -20,13 +20,14 @@ router.post("/login", async (req, res) => {
     httpOnly: false,
     secure: true, // Only secure in production
     sameSite: "none",
+    path: "/",
   });
 
   res.json({
     success: true,
     statusCode: 200,
     message: "user login successfully",
-    data: user,
+    token,
   });
 });
 // router.post("/register", async (req, res) => {
