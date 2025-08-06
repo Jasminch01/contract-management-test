@@ -20,7 +20,6 @@ router.post("/login", async (req, res) => {
     httpOnly: true,
     secure: true, // Only secure in production
     sameSite: "none",
-    path: "/",
   });
 
   res.json({
