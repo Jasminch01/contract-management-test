@@ -14,21 +14,19 @@ router.post("/login", async (req, res) => {
 
   const token = jwt.sign({ id: user._id }, SECRET, { expiresIn: "1d" });
 
-  // Environment-aware cookie settings
-  const isProduction = process.env.NODE_ENV === "production";
+  // Different settings for development vs production
 
-  res.cookie("accessToken", token, {
+  res.cookie("accesstoken", token, {
     httpOnly: true,
-    secure: isProduction, // Only secure in production
-    sameSite: isProduction ? "none" : "lax", // Strict in production, lax in development
-    maxAge: 24 * 60 * 60 * 1000, // 1 day in milliseconds
-    path: "/", // Accessible across all routes
+    secure: true, // Only secure in production
+    sameSite: "none",
+    domain : "https://contract-management-livid.vercel.app"
   });
 
   res.json({
     success: true,
     statusCode: 200,
-    message: "User logged in successfully",
+    message: "user login successfully",
     data: user,
   });
 });
