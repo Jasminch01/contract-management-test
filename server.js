@@ -26,7 +26,10 @@ const app = express();
 // middlewares
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: [
+      "http://localhost:3000",
+      "https://contract-management-livid.vercel.app",
+    ],
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
@@ -34,8 +37,6 @@ app.use(
 );
 app.use(express.json());
 app.use(cookieParser());
-
-
 
 ///
 
@@ -48,6 +49,11 @@ app.use("/api", authMiddleware, trashRoutes);
 app.use("/api/portZone-bids", authMiddleware, portZoneBids);
 app.use("/api/delivered-bids", authMiddleware, deliveredBidRoutes);
 app.use("/api/dashboard", authMiddleware, dashboardRoutes);
+
+app.use("/", (req, res) => {
+  // console.log("API is running");
+  res.json({ message: "API is running" });
+});
 
 const PORT = process.env.PORT || 5000;
 

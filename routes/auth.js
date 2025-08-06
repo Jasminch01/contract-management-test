@@ -7,9 +7,7 @@ const SECRET = process.env.JWT_SECRET || "supersecret";
 
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
-  console.log(email, password);
   const user = await User.findOne({ email });
-
   if (!user || !(await user.comparePassword(password))) {
     return res.status(401).json({ message: "Invalid credentials" });
   }
@@ -20,7 +18,7 @@ router.post("/login", async (req, res) => {
   const isProduction = process.env.NODE_ENV === "production";
 
   res.cookie("token", token, {
-    httpOnly: false,
+    httpOnly: true,
     secure: isProduction, // Only secure in production
     sameSite: isProduction ? "none" : "lax", // "none" requires secure
   });
