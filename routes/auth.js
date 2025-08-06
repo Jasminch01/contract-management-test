@@ -15,11 +15,10 @@ router.post("/login", async (req, res) => {
   const token = jwt.sign({ id: user._id }, SECRET, { expiresIn: "1d" });
 
   // Different settings for development vs production
-  const isProduction = process.env.NODE_ENV === "production";
 
   res.cookie("token", token, {
     httpOnly: true,
-    secure: isProduction, // Only secure in production
+    secure: true, // Only secure in production
     sameSite: "none",
     path: "/",
   });
