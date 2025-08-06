@@ -16,7 +16,7 @@ router.post("/login", async (req, res) => {
 
   // Different settings for development vs production
 
-  res.cookie("token", token, {
+  res.cookie("accessToken", token, {
     httpOnly: true,
     secure: true, // Only secure in production
     sameSite: "none",
