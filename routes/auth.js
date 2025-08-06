@@ -17,10 +17,9 @@ router.post("/login", async (req, res) => {
   // Different settings for development vs production
 
   res.cookie("accesstoken", token, {
-    httpOnly: true,
+    httpOnly: false,
     secure: true, // Only secure in production
     sameSite: "none",
-    domain : "https://contract-management-livid.vercel.app"
   });
 
   res.json({
