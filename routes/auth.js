@@ -14,18 +14,21 @@ router.post("/login", async (req, res) => {
 
   const token = jwt.sign({ id: user._id }, SECRET, { expiresIn: "1d" });
 
-  // Different settings for development vs production
+  // Environment-aware cookie settings
+  const isProduction = process.env.NODE_ENV === "production";
 
   res.cookie("accessToken", token, {
     httpOnly: true,
-    secure: true, // Only secure in production
-    sameSite: "none",
+    secure: isProduction, // Only secure in production
+    sameSite: isProduction ? "none" : "lax", // Strict in production, lax in development
+    maxAge: 24 * 60 * 60 * 1000, // 1 day in milliseconds
+    path: "/", // Accessible across all routes
   });
 
   res.json({
     success: true,
     statusCode: 200,
-    message: "user login successfully",
+    message: "User logged in successfully",
     data: user,
   });
 });
