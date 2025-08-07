@@ -4,11 +4,12 @@ const moment = require("moment");
 const calculateCommission = (contracts) => {
   return contracts.reduce((sum, c) => {
     if (c.status === "Complete") {
+      console.log(c.brokerRate)
       const rate = parseFloat(c.brokerRate) || 0;
       const tonns = parseFloat(c.tonnes) || 0;
       let multiplier = 0;
 
-      if (c.brokeragePayableBy === "Buyer & Seller") {
+      if (c.brokeragePayableBy === "Buyer & Seller" || "Seller & Buyer") {
         multiplier = 2;
       } else if (["Buyer", "Seller"].includes(c.brokeragePayableBy)) {
         multiplier = 1;
@@ -16,7 +17,7 @@ const calculateCommission = (contracts) => {
 
       return sum + rate * tonns * multiplier;
     }
-
+console.log(sum)
     return sum;
   }, 0);
 };
