@@ -2,20 +2,30 @@ const Contract = require("../models/Contract");
 const moment = require("moment");
 
 const calculateCommission = (contracts) => {
-  return contracts.reduce((sum, c) => {
-    if (c.status === "Complete") {
-      const rate = parseFloat(c.brokerRate) || 0;
-      const tonns = parseFloat(c.tonnes) || 0;
+  return contracts.reduce((sum, contract) => {
+    // Only process completed contracts
+    if (contract.status === "Complete") {
+      const rate = parseFloat(contract.brokerRate) || 0;
+      const tonnes = parseFloat(contract.tonnes) || 0;
       let multiplier = 0;
 
-      if (c.brokeragePayableBy === "Buyer & Seller" || "Seller & Buyer") {
+      // Check who pays brokerage
+      if (
+        contract.brokeragePayableBy === "Buyer & Seller" ||
+        contract.brokeragePayableBy === "Seller & Buyer"
+      ) {
         multiplier = 2;
-      } else if (["Buyer", "Seller"].includes(c.brokeragePayableBy)) {
+      } else if (
+        contract.brokeragePayableBy === "Buyer" ||
+        contract.brokeragePayableBy === "Seller"
+      ) {
         multiplier = 1;
       }
+      // If no valid brokerage payable, multiplier remains 0
 
-      return sum + rate * tonns * multiplier;
+      return sum + rate * tonnes * multiplier;
     }
+
     return sum;
   }, 0);
 };

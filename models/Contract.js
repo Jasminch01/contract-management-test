@@ -29,6 +29,7 @@ const contractSchema = new mongoose.Schema({
   paymentTerms: String,
   brokerRate: String,
   deliveryDestination: String,
+  brokeragePayableBy: String,
   specialCondition: String,
   termsAndConditions: String,
   notes: String,
