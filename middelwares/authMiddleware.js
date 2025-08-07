@@ -3,7 +3,6 @@ const SECRET = process.env.JWT_SECRET || "supersecret";
 
 module.exports = (req, res, next) => {
   const authHeader = req.headers.authorization;
-  console.log("Authorization header:", authHeader);
 
   if (!authHeader) {
     return res.status(401).json({ message: "No token provided" });
@@ -19,8 +18,6 @@ module.exports = (req, res, next) => {
     // Format: "<token>" (direct token)
     token = authHeader;
   }
-
-  console.log("Extracted token:", token);
 
   if (!token) {
     return res.status(401).json({ message: "No token provided" });

@@ -14,7 +14,7 @@ router.post("/login", async (req, res) => {
   }
 
   const token = jwt.sign({ id: user._id }, SECRET, { expiresIn: "1d" });
-  res.json({ token, isFirstLogin: user.isFirstLogin });
+  res.json({data : { token, isFirstLogin: user.isFirstLogin }});
 });
 
 // router.post("/login", async (req, res) => {
