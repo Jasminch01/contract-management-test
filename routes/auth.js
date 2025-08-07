@@ -21,6 +21,7 @@ router.post("/login", async (req, res) => {
     secure: true, // Only secure in production
     sameSite: "none",
     path: "/",
+    domain : ".example.com"
   });
 
   res.json({
