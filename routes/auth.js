@@ -8,29 +8,41 @@ const SECRET = process.env.JWT_SECRET || "supersecret";
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
   const user = await User.findOne({ email });
+
   if (!user || !(await user.comparePassword(password))) {
     return res.status(401).json({ message: "Invalid credentials" });
   }
 
   const token = jwt.sign({ id: user._id }, SECRET, { expiresIn: "1d" });
-
-  // Different settings for development vs production
-
-  res.cookie("accesstoken", token, {
-    httpOnly: false,
-    secure: true, // Only secure in production
-    sameSite: "none",
-    path: "/",
-    domain : ".example.com"
-  });
-
-  res.json({
-    success: true,
-    statusCode: 200,
-    message: "user login successfully",
-    token,
-  });
+  res.json({ token, isFirstLogin: user.isFirstLogin });
 });
+
+// router.post("/login", async (req, res) => {
+//   const { email, password } = req.body;
+//   const user = await User.findOne({ email });
+//   if (!user || !(await user.comparePassword(password))) {
+//     return res.status(401).json({ message: "Invalid credentials" });
+//   }
+
+//   const token = jwt.sign({ id: user._id }, SECRET, { expiresIn: "1d" });
+
+//   // Different settings for development vs production
+
+//   res.cookie("accesstoken", token, {
+//     httpOnly: false,
+//     secure: true, // Only secure in production
+//     sameSite: "none",
+//     path: "/",
+//     domain : ".example.com"
+//   });
+
+//   res.json({
+//     success: true,
+//     statusCode: 200,
+//     message: "user login successfully",
+//     token,
+//   });
+// });
 // router.post("/register", async (req, res) => {
 //   try {
 //     const { email, password, name } = req.body;
