@@ -4,7 +4,6 @@ const moment = require("moment");
 const calculateCommission = (contracts) => {
   return contracts.reduce((sum, c) => {
     if (c.status === "Complete") {
-      console.log(c.brokerRate)
       const rate = parseFloat(c.brokerRate) || 0;
       const tonns = parseFloat(c.tonnes) || 0;
       let multiplier = 0;
@@ -17,7 +16,6 @@ const calculateCommission = (contracts) => {
 
       return sum + rate * tonns * multiplier;
     }
-console.log(sum)
     return sum;
   }, 0);
 };
