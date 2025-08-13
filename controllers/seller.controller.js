@@ -8,7 +8,7 @@ exports.createSeller = async(req, res) =>{
       additionalNgrs,
       accountNumber,
       email,
-      authorityToAct,
+      authorityActFormPdf,
       address,
       mainNgr,
       contactName,
@@ -22,10 +22,10 @@ exports.createSeller = async(req, res) =>{
       ? JSON.parse(bulkHandlerCredentials)
       : bulkHandlerCredentials;
 
-    const authorityActFormPdfFile = req.files?.authorityActFormPdf?.[0];
-    const authorityActFormPdfPath = authorityActFormPdfFile
-      ? `{req.protocol}://${req.get('host')}/uploads/${authorityActFormPdfFile.filename}`
-      : null;
+    // const authorityActFormPdfFile = req.files?.authorityActFormPdf?.[0];
+    // const authorityActFormPdfPath = authorityActFormPdfFile
+    //   ? `{req.protocol}://${req.get('host')}/uploads/${authorityActFormPdfFile.filename}`
+    //   : null;
 
     const seller = await Seller.create({
       legalName,
@@ -33,13 +33,13 @@ exports.createSeller = async(req, res) =>{
       additionalNgrs: Array.isArray(additionalNgrs) ? additionalNgrs : [additionalNgrs],
       accountNumber,
       email,
-      authorityToAct,
+      // authorityToAct,
       address,
       mainNgr,
       contactName,
       phoneNumber,
       locationZone: Array.isArray(locationZone) ? locationZone : [locationZone],
-      authorityActFormPdf: authorityActFormPdfPath,
+      authorityActFormPdf,
       bulkHandlerCredentials: parsedBulkHandlerCredentials,
     });
 
