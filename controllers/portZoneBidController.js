@@ -1,5 +1,6 @@
-const { Parser } = require("json2csv");
+const { Parser, parse } = require("json2csv");
 const PortZoneBid = require("../models/PortZoneBid");
+const moment = require("moment");
 
 // Create or update port zone bid by label+season+date
 exports.createOrUpdatePortZoneBid = async (req, res) => {
@@ -12,8 +13,14 @@ exports.createOrUpdatePortZoneBid = async (req, res) => {
         .json({ message: "label, season, and date are required." });
     }
 
+    // Use moment for consistent UTC handling
+    const parsedDate = moment.utc(date);
+    const startOfDay = parsedDate.clone().startOf("day").toDate();
+    const endOfDay = parsedDate.clone().endOf("day").toDate();
+
+    //This way, any stored date in that day will match regardless.
     const updatedBid = await PortZoneBid.findOneAndUpdate(
-      { label, season, date: new Date(date) }, // match combination
+      { label, season, date: { $gte: startOfDay, $lt: endOfDay } }, // match combination
       req.body,
       { new: true, upsert: true, setDefaultsOnInsert: true }
     );
@@ -42,11 +49,10 @@ exports.getPortZoneBids = async (req, res) => {
 
     // Filter by specific date (matches same calendar day on updatedAt)
     if (date) {
-      const parsedDate = new Date(date);
-      const nextDay = new Date(parsedDate);
-      nextDay.setDate(parsedDate.getDate() + 1);
+      const parsedDate = moment.utc(date).startOf('day').toDate();
+      const nextDay = moment.utc(parsedDate).add(1, 'day').toDate();
 
-      filter.updatedAt = {
+      filter.date = {
         $gte: parsedDate,
         $lt: nextDay,
       };
@@ -54,14 +60,21 @@ exports.getPortZoneBids = async (req, res) => {
 
     // Filter by range (startDate to endDate)
     if (startDate && endDate) {
+      const start = moment.utc(startDate).startOf('day').toDate();
+      const end = moment.utc(endDate).endOf('day').toDate();
+
       filter.updatedAt = {
-        $gte: new Date(startDate),
-        $lte: new Date(endDate),
+        $gte: start,
+        $lte: end,
       };
     }
 
+    // for debugging.
+    console.log("Filter being applied:", filter);
+
+
     const bids = await PortZoneBid.find(filter);
-    res.status(200).json({data: bids});
+    res.status(200).json({data: bids || []});
   } catch (error) {
     console.error("Error fetching Port Zone Bids:", error);
     res.status(500).json({ message: error.message });
