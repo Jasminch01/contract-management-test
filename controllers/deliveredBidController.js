@@ -104,9 +104,9 @@ exports.exportDeliveredBidsCSV = async (req, res) => {
     }
 
     if (startDate && endDate) {
-      filter.updatedAt = {
-        $gte: new Date(startDate),
-        $lte: new Date(endDate),
+      filter.date = {
+        $gte: moment.utc(startDate).startOf('day').toDate(),
+        $lte: moment.utc(endDate).endOf('day').toDate(),
       };
     }
 
