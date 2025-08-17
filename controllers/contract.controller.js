@@ -10,6 +10,23 @@ exports.createContract = async (req, res) => {
   try {
     const data = req.body;
 
+    // Validate required fields
+    if (!data.contractDate) {
+      return res.status(400).json({ message: "contractDate is required." });
+    }
+
+    // Parse and validate contractDate
+    let parsedContractDate;
+    try {
+      parsedContractDate = new Date(data.contractDate);
+      if (isNaN(parsedContractDate.getTime())) {
+        throw new Error("Invalid contractDate format.");
+      }
+      data.contractDate = parsedContractDate; // Ensure date is in Date object format
+    } catch (error) {
+      return res.status(400).json({ message: error.message });
+    }
+
     if (req.files) {
       if (req.files.attachedSellerContract)
         data.attachedSellerContract =
@@ -22,7 +39,7 @@ exports.createContract = async (req, res) => {
     const contract = new Contract(data);
 
     await contract.save();
-    res.status(201).json(contract);
+    res.status(201).json(contract); // Include contractDate in response
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Error creating contract", error });
@@ -32,9 +49,6 @@ exports.createContract = async (req, res) => {
 // @desc Get all contracts
 exports.getAllContracts = async (req, res) => {
   try {
-    // const contracts = await Contract.find();
-    // res.status(200).json(contracts);
-
     const {
       commodity,
       grade,
@@ -48,11 +62,10 @@ exports.getAllContracts = async (req, res) => {
       sortDir = "desc",
     } = req.query;
 
-    // dynamic filter object.
     const filter = { isDeleted: false };
 
     if (commodity) {
-      filter.commodity = new RegExp(commodity, "i"); // case insensitive partial
+      filter.commodity = new RegExp(commodity, "i");
     }
 
     if (grade) {
@@ -82,7 +95,6 @@ exports.getAllContracts = async (req, res) => {
       filter.status = req.query.status;
     }
 
-    // query with pagination and sorting.
     const skip = (Number(page) - 1) * Number(limit);
     const sort = { [sortBy]: sortDir === "asc" ? 1 : -1 };
 
@@ -111,14 +123,13 @@ exports.getContractById = async (req, res) => {
   try {
     const contract = await Contract.findById(req.params.id).populate(
       "buyer seller"
-    ); // Populate buyer and seller with full data
+    );
 
     if (!contract || contract.isDeleted) {
       return res.status(404).json({ message: "Contract not found" });
     }
 
-    // Send the response with the populated contract data
-    res.status(200).json(contract);
+    res.status(200).json(contract); // Ensure contractDate is included
   } catch (error) {
     console.error("Error fetching contract:", error);
     res
@@ -131,8 +142,27 @@ exports.getContractById = async (req, res) => {
 exports.updateContract = async (req, res) => {
   const data = req.body;
   try {
-    if (req.file) {
-      data.attachedSellerContract = req.file.filename;
+    // Validate contractDate if provided
+    if (data.contractDate) {
+      let parsedContractDate;
+      try {
+        parsedContractDate = new Date(data.contractDate);
+        if (isNaN(parsedContractDate.getTime())) {
+          throw new Error("Invalid contractDate format.");
+        }
+        data.contractDate = parsedContractDate;
+      } catch (error) {
+        return res.status(400).json({ message: error.message });
+      }
+    }
+
+    if (req.files) {
+      if (req.files.attachedSellerContract)
+        data.attachedSellerContract =
+          req.files.attachedSellerContract[0].filename;
+      if (req.files.attachedBuyerContract)
+        data.attachedBuyerContract =
+          req.files.attachedBuyerContract[0].filename;
     }
 
     const updated = await Contract.findByIdAndUpdate(req.params.id, data, {
@@ -142,7 +172,7 @@ exports.updateContract = async (req, res) => {
     if (!updated) {
       return res.status(400).json({ message: "Contract not found" });
     }
-    res.status(200).json(updated);
+    res.status(200).json(updated); // Include contractDate in response
   } catch (error) {
     res.status(500).json({ message: "Error updating contract", error });
   }
@@ -202,28 +232,23 @@ exports.exportContractPDF = async (req, res) => {
       return res.status(404).json({ message: "Contract not found" });
     }
 
-    // Set headers for download.
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
-      "Content-Destination",
+      "Content-Disposition",
       `attachment; filename=Contract_${contract._id}.pdf`
     );
 
     const doc = new PDFDocument();
     doc.pipe(res);
 
-    // Add Title
     doc.fontSize(20).text("Contract Details", { align: "center" }).moveDown();
 
-    // List all Contract field
     Object.entries(contract.toObject()).forEach(([key, value]) => {
-      // Format dates.
       if (value instanceof Date) {
         value = new Date(value).toLocaleDateString();
       } else if (typeof value === "object" && value !== null) {
         value = JSON.stringify(value, null, 2);
       }
-
       doc.fontSize(12).text(`${key}: ${value}`);
     });
 
@@ -317,7 +342,7 @@ exports.getDeletedContracts = async (req, res) => {
 exports.sendContractByEmail = async (req, res) => {
   try {
     const { id } = req.params;
-    const { recipient } = req.body; // buyer or seller
+    const { recipient } = req.body;
 
     const contract = await Contract.findById(id).populate("buyer seller");
 
@@ -334,7 +359,6 @@ exports.sendContractByEmail = async (req, res) => {
     if (!target.email)
       return res.status(400).json({ message: "Recipient email not available" });
 
-    // Generate PDF to memory
     const bufferStream = new stream.PassThrough();
     const doc = new PDFDocument();
     let buffers = [];
