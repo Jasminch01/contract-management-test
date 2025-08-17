@@ -129,6 +129,8 @@ exports.getContractById = async (req, res) => {
       return res.status(404).json({ message: "Contract not found" });
     }
 
+    console.log("Fetched contract:", contract); // Debug log
+
     res.status(200).json(contract); // Ensure contractDate is included
   } catch (error) {
     console.error("Error fetching contract:", error);
