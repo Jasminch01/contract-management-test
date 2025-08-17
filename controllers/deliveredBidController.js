@@ -3,12 +3,25 @@ const DeliveredBid = require("../models/DeliveredBid");
 
 exports.createOrUpdateDeliveredBid = async (req, res) => {
   try {
+    console.log("Received req.body:", req.body); // Debug log
+
     const { label, season, date, monthlyValues } = req.body;
 
     if (!label || !season || !date) {
       return res
         .status(400)
-        .json({ message: "label, season and date are required." });
+        .json({ message: "label, season, and date are required." });
+    }
+
+    // Parse and validate date
+    let parsedDate;
+    try {
+      parsedDate = new Date(date);
+      if (isNaN(parsedDate.getTime())) {
+        throw new Error("Invalid date");
+      }
+    } catch (error) {
+      return res.status(400).json({ message: "Invalid date format." });
     }
 
     // Prepare update payload
@@ -28,14 +41,29 @@ exports.createOrUpdateDeliveredBid = async (req, res) => {
       "December",
     ];
 
-    for (const key of allowedMonths) {
-      if (monthlyValues[key] !== undefined) {
-        monthlyUpdates[`monthlyValues.${key}`] = monthlyValues[key];
+    // Validate and process monthlyValues
+    if (monthlyValues && typeof monthlyValues === "object" && monthlyValues !== null) {
+      console.log("Raw monthlyValues structure:", JSON.stringify(monthlyValues)); // Debug log
+      // Use the keys directly from monthlyValues
+      for (const key of Object.keys(monthlyValues)) {
+        if (allowedMonths.includes(key)) {
+          const value = monthlyValues[key];
+          if (value !== undefined && value !== null) {
+            monthlyUpdates[`monthlyValues.${key}`] = Number(value); // Convert to number
+          }
+        } else {
+          console.warn(`Ignoring invalid month key: ${key}`);
+        }
       }
+    } else if (monthlyValues !== undefined) {
+      return res.status(400).json({ message: "monthlyValues must be an object if provided." });
     }
 
+    // Debug purpose
+    console.log("Updating bid with payload:", { label, season, date: parsedDate, monthlyUpdates });
+
     const updatedBid = await DeliveredBid.findOneAndUpdate(
-      { label, season, date: new Date(date) },
+      { label, season, date: parsedDate },
       {
         $set: {
           ...monthlyUpdates,
@@ -45,14 +73,15 @@ exports.createOrUpdateDeliveredBid = async (req, res) => {
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
 
-    res.status(200).json({data : updatedBid});
-  } catch (error) {
+    res.status(200).json({ data: updatedBid });
+  } 
+  catch(error){
+    console.error("Error in createOrUpdateDeliveredBid:", error); // Log full error
     res.status(500).json({ message: error.message });
   }
 };
 
 exports.getDeliveredBids = async (req, res) => {
-  const { season, date } = req.query;
   try {
     const { season, date } = req.query;
 
