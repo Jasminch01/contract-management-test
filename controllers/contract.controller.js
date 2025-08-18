@@ -7,6 +7,7 @@ const stream = require("stream");
 
 // @desc Create a new contract.
 exports.createContract = async (req, res) => {
+
   try {
     const data = req.body;
 
@@ -128,8 +129,6 @@ exports.getContractById = async (req, res) => {
     if (!contract || contract.isDeleted) {
       return res.status(404).json({ message: "Contract not found" });
     }
-
-    console.log("Fetched contract:", contract); // Debug log
 
     res.status(200).json(contract); // Ensure contractDate is included
   } catch (error) {
