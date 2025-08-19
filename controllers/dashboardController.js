@@ -37,10 +37,12 @@ exports.getDashboardSummary = async (req, res) => {
 
     const allContracts = await Contract.find({ isDeleted: false });
     const todayContracts = allContracts.filter((c) =>
-      moment(c.createdAt).isSame(today, "day")
+      moment(c.contractDate ? c.contractDate : c.createdAt).isSame(today, "day")
     );
     const weekContracts = allContracts.filter((c) =>
-      moment(c.createdAt).isSameOrAfter(weekStart)
+      moment(c.contractDate ? c.contractDate : c.createdAt).isSameOrAfter(
+        weekStart
+      )
     );
 
     const dailyCommission = calculateCommission(todayContracts);
