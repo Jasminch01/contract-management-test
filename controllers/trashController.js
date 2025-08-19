@@ -60,9 +60,10 @@ exports.bulkDeleteTrash = async (req, res) => {
 
 exports.emptyAllTrash = async (req, res) => {
   try {
-    Buyer.deleteMany()
-    Seller.deleteMany()
-    Contract.deleteMany()
+    // Add await keywords and store results
+    const buyerDelete = await Buyer.deleteMany({ isDeleted: true });
+    const sellerDelete = await Seller.deleteMany({ isDeleted: true });
+    const contractDelete = await Contract.deleteMany({ isDeleted: true });
 
     res.status(200).json({
       success: true,
@@ -75,7 +76,11 @@ exports.emptyAllTrash = async (req, res) => {
     });
   } catch (error) {
     console.error("Error emptying trash:", error);
-    res.status(500).json({ success: false, message: "Failed to empty trash" });
+    res.status(500).json({
+      success: false,
+      message: "Failed to empty trash",
+      error: error.message,
+    });
   }
 };
 

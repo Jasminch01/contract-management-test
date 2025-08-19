@@ -6,6 +6,7 @@ router.get('/trash', TrashController.getTrashBin);
 router.delete('/trash/bulk', TrashController.bulkDeleteTrash);
 router.delete('/trash/permanent', TrashController.permanentDeleteTrash);
 router.delete('/trash/empty', TrashController.permanentDeleteTrash);
+router.delete('/trash/emptyall', TrashController.emptyAllTrash);
 router.post('/trash/bulk/restore', TrashController.bulkRestoreTrash);
 
 module.exports = router;
