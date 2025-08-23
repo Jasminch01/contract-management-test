@@ -21,7 +21,7 @@
     attachedSellerContract: String, // File URL or name
     attachedBuyerContract: String, // File URL or name
     contractType: String,
-    NGRNumber: String,
+    ngrNumber: String,
     deliveryOption: String,
     freight: String,
     weights: String,
