@@ -7,7 +7,6 @@ const stream = require("stream");
 
 // @desc Create a new contract.
 exports.createContract = async (req, res) => {
-
   try {
     const data = req.body;
 
@@ -44,6 +43,73 @@ exports.createContract = async (req, res) => {
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Error creating contract", error });
+  }
+};
+exports.generateNextContractNumberV2 = async () => {
+  try {
+    // Use aggregation to properly sort by the numeric part of contract number
+    const result = await Contract.aggregate([
+      {
+        $match: {
+          contractNumber: { $regex: /^JZ\d{5}$/ },
+        },
+      },
+      {
+        $addFields: {
+          // Extract numeric part for proper sorting
+          numericPart: {
+            $toInt: { $substr: ["$contractNumber", 2, 5] },
+          },
+        },
+      },
+      {
+        $sort: { numericPart: -1 },
+      },
+      {
+        $limit: 1,
+      },
+      {
+        $project: {
+          contractNumber: 1,
+          numericPart: 1,
+        },
+      },
+    ]);
+
+    let nextSequence = 2600;
+
+    if (result.length > 0 && result[0].numericPart) {
+      nextSequence = result[0].numericPart + 1;
+    }
+
+    return `JZ${String(nextSequence).padStart(5, "0")}`;
+  } catch (error) {
+    // console.error("Error generating contract number:", error);
+    const timestamp = Date.now();
+    const fallbackNumber = Math.max(
+      2600,
+      parseInt(timestamp.toString().slice(-5))
+    );
+    return `JZ${String(fallbackNumber).padStart(5, "0")}`;
+  }
+};
+exports.getNextContractNumber = async (req, res) => {
+  try {
+    // Use the V2 function for better sorting
+    const nextContractNumber = await exports.generateNextContractNumberV2();
+    res.status(200).json({
+      data: {
+        nextContractNumber,
+        success: true,
+      },
+    });
+  } catch (error) {
+    // console.error("Error in getNextContractNumber:", error);
+    res.status(500).json({
+      message: "Error getting next contract number",
+      error: error.message,
+      success: false,
+    });
   }
 };
 
