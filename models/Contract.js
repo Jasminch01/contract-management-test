@@ -110,6 +110,8 @@ const contractSchema = new mongoose.Schema({
   attachedBuyerContract: String, // File URL or name
   contractType: String,
   ngrNumber: String,
+  buyerContactName : String,
+  sellerContactName : String,
   deliveryOption: String,
   freight: String,
   weights: String,

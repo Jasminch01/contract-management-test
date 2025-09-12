@@ -9,7 +9,6 @@ const stream = require("stream");
 exports.createContract = async (req, res) => {
   try {
     const data = req.body;
-
     // Validate required fields
     if (!data.contractDate) {
       return res.status(400).json({ message: "contractDate is required." });
@@ -37,11 +36,11 @@ exports.createContract = async (req, res) => {
     }
 
     const contract = new Contract(data);
-
     await contract.save();
     res.status(201).json(contract); // Include contractDate in response
   } catch (error) {
     console.log(error);
+    console.log(error)
     res.status(500).json({ message: "Error creating contract", error });
   }
 };

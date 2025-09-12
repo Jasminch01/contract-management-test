@@ -9,8 +9,7 @@ const sellerSchema = new mongoose.Schema({
     authorityToAct:   { type: String },      // file URL or filename
     address:          { type: String },
     mainNgr:          { type: String },
-    contactName:      { type: String },
-    locationZone:     { type: String },
+    contactName:      { type: [String] },
     phoneNumber:      { type: String },
     locationZone:{
         type: [String], // Multi-select zones
