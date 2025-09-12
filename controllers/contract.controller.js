@@ -39,8 +39,6 @@ exports.createContract = async (req, res) => {
     await contract.save();
     res.status(201).json(contract); // Include contractDate in response
   } catch (error) {
-    console.log(error);
-    console.log(error)
     res.status(500).json({ message: "Error creating contract", error });
   }
 };
