@@ -125,6 +125,7 @@ exports.deleteSeller = async (req, res) => {
 };
 
 exports.searchSellers = async (req, res) => {
+  console.log(req.query.q)
   try {
     const q = req.query.q || '';
     const sellers = await Seller.find({
@@ -133,7 +134,7 @@ exports.searchSellers = async (req, res) => {
         { abn: new RegExp(q, 'i') }
       ]
     }).limit(10);
-    res.json(sellers);
+    res.json({data : sellers});
   } catch (err) {
     res.status(500).json(err);
   }

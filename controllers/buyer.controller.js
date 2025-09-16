@@ -88,8 +88,8 @@ exports.searchBuyers = async (req, res) => {
         { name: new RegExp(q, 'i') },
         { abn: new RegExp(q, 'i') }
       ]
-    }).limit(10);
-    res.json(buyers);
+    });
+    res.json({data : buyers});
   } catch (err) {
     res.status(500).json(err);
   }
