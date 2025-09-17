@@ -4,6 +4,8 @@ const { mongo, default: mongoose } = require("mongoose");
 const { Parser } = require("json2csv");
 const { sendEmail } = require("../utils/mailer");
 const stream = require("stream");
+const Seller = require("../models/Seller");
+const Buyer = require("../models/Buyer");
 
 // @desc Create a new contract.
 exports.createContract = async (req, res) => {
@@ -111,74 +113,219 @@ exports.getNextContractNumber = async (req, res) => {
 };
 
 // @desc Get all contracts
+// exports.getAllContracts = async (req, res) => {
+//   try {
+//     const {
+//       commodity,
+//       grade,
+//       contractNumber,
+//       tonnesMin,
+//       tonnesMax,
+//       buyerId,
+//       page = 1,
+//       limit = 10,
+//       sortBy = "createdAt",
+//       sortDir = "desc",
+//     } = req.query;
+
+//     const filter = { isDeleted: false };
+
+//     if (commodity) {
+//       filter.commodity = new RegExp(commodity, "i");
+//     }
+
+//     if (grade) {
+//       filter.grade = grade;
+//     }
+
+//     if (contractNumber) {
+//       filter.contractNumber = contractNumber.toUpperCase();
+//     }
+
+//     if (buyerId && mongoose.Types.ObjectId.isValid(buyerId)) {
+//       filter.buyerId = buyerId;
+//     }
+
+//     if (tonnesMin || tonnesMax) {
+//       filter.weights = {};
+
+//       if (tonnesMin) {
+//         filter.weights.$gte = Number(tonnesMin);
+//       }
+//       if (tonnesMax) {
+//         filter.weights.$lte = Number(tonnesMax);
+//       }
+//     }
+
+//     if (req.query.status) {
+//       filter.status = req.query.status;
+//     }
+
+//     const skip = (Number(page) - 1) * Number(limit);
+//     const sort = { [sortBy]: sortDir === "asc" ? 1 : -1 };
+
+//     const [data, total] = await Promise.all([
+//       Contract.find(filter)
+//         .populate("buyer seller")
+//         .sort(sort)
+//         .skip(skip)
+//         .limit(Number(limit)),
+//       Contract.countDocuments(filter),
+//     ]);
+
+//     res.json({
+//       data: {
+//         page: Number(page),
+//         totalPages: Math.ceil(total / limit),
+//         total,
+//         data,
+//       },
+//     });
+//   } catch (error) {
+//     res.status(500).json({ message: "Error fetching contracts", error });
+//   }
+// };
+
 exports.getAllContracts = async (req, res) => {
   try {
     const {
       commodity,
       grade,
       contractNumber,
-      tonnesMin,
-      tonnesMax,
-      buyerId,
+      tonnes,
+      ngrNumber,
+      buyerName,
+      sellerName,
+      status,
       page = 1,
       limit = 10,
       sortBy = "createdAt",
-      sortDir = "desc",
+      sortOrder = "desc",
     } = req.query;
+
+    console.log("Search params:", { buyerName, sellerName }); // Debug log
 
     const filter = { isDeleted: false };
 
+    // ✅ Commodity search (case-insensitive partial match)
     if (commodity) {
       filter.commodity = new RegExp(commodity, "i");
     }
 
+    // ✅ Grade search (case-insensitive partial match)
     if (grade) {
-      filter.grade = grade;
+      filter.grade = new RegExp(grade, "i");
     }
 
+    // ✅ Contract Number search (case-insensitive partial match)
     if (contractNumber) {
-      filter.contractNumber = contractNumber.toUpperCase();
+      filter.contractNumber = new RegExp(contractNumber, "i");
     }
 
-    if (buyerId && mongoose.Types.ObjectId.isValid(buyerId)) {
-      filter.buyerId = buyerId;
-    }
-
-    if (tonnesMin || tonnesMax) {
-      filter.weights = {};
-
-      if (tonnesMin) {
-        filter.weights.$gte = Number(tonnesMin);
-      }
-      if (tonnesMax) {
-        filter.weights.$lte = Number(tonnesMax);
+    // ✅ Tonnes search (handle as number)
+    if (tonnes) {
+      const tonnesValue = Number(tonnes);
+      if (!isNaN(tonnesValue)) {
+        filter.tonnes = tonnesValue;
       }
     }
 
-    if (req.query.status) {
-      filter.status = req.query.status;
+    // ✅ NGR search (handle both string and number)
+    if (ngrNumber) {
+      const ngrAsNumber = Number(ngrNumber);
+      if (!isNaN(ngrAsNumber)) {
+        filter.ngrNumber = ngrAsNumber;
+      } else {
+        filter.ngrNumber = new RegExp(ngrNumber, "i");
+      }
     }
+
+    // ✅ Status filter
+    if (status) {
+      filter.status = new RegExp(status, "i");
+    }
+    if (buyerName) {
+      try {
+        const buyers = await Buyer.find({
+          $or: [
+            { name: new RegExp(buyerName, "i") },
+            { legalName: new RegExp(buyerName, "i") },
+            { companyName: new RegExp(buyerName, "i") },
+          ],
+        }).select("_id");
+
+
+        if (buyers.length > 0) {
+          filter.buyer = { $in: buyers.map((b) => b._id) };
+        } else {
+          // If no buyers found, set impossible condition to return empty result
+          filter.buyer = { $in: [] };
+        }
+      } catch (error) {
+        filter.buyer = { $in: [] };
+      }
+    }
+
+    // ✅ FIXED: Seller search (search in Seller collection, not User)
+    if (sellerName) {
+      try {
+        const sellers = await Seller.find({
+          $or: [
+            { name: new RegExp(sellerName, "i") },
+            { legalName: new RegExp(sellerName, "i") },
+            { companyName: new RegExp(sellerName, "i") },
+            { firstName: new RegExp(sellerName, "i") },
+            { lastName: new RegExp(sellerName, "i") },
+          ],
+        }).select("_id");
+
+        if (sellers.length > 0) {
+          filter.seller = { $in: sellers.map((s) => s._id) };
+        } else {
+          // If no sellers found, set impossible condition to return empty result
+          filter.seller = { $in: [] };
+        }
+      } catch (error) {
+        filter.seller = { $in: [] };
+      }
+    }
+
+   // console.log("Final search filters applied:", filter); // 🔍 Debug log
 
     const skip = (Number(page) - 1) * Number(limit);
-    const sort = { [sortBy]: sortDir === "asc" ? 1 : -1 };
+    const sort = { [sortBy]: sortOrder === "asc" ? 1 : -1 };
 
     const [data, total] = await Promise.all([
       Contract.find(filter)
-        .populate("buyer seller")
+        .populate({
+          path: "buyer",
+          select: "name legalName email companyName", // Add fields as needed
+        })
+        .populate({
+          path: "seller",
+          select: "name legalName email mainNgr companyName firstName lastName", // Add fields as needed
+        })
         .sort(sort)
         .skip(skip)
         .limit(Number(limit)),
       Contract.countDocuments(filter),
     ]);
 
+    // ✅ Fixed response structure
     res.json({
-      page: Number(page),
-      totalPages: Math.ceil(total / limit),
-      total,
-      data,
+      data: {
+        page: Number(page),
+        totalPages: Math.ceil(total / Number(limit)),
+        total,
+        data,
+      },
     });
   } catch (error) {
-    res.status(500).json({ message: "Error fetching contracts", error });
+   // console.error("Error fetching contracts:", error);
+    res.status(500).json({
+      message: "Error fetching contracts",
+      error: error.message,
+    });
   }
 };
 
