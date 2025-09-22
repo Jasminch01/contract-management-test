@@ -16,7 +16,7 @@ router.post("/login", async (req, res) => {
 
   const jwtpayload = { email, userId };
 
-  const token = jwt.sign(jwtpayload, SECRET, { expiresIn: "1d" });
+  const token = jwt.sign(jwtpayload, SECRET);
 
   // Set token as httpOnly cookie
   res.cookie("token", token, {
