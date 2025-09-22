@@ -75,7 +75,7 @@ exports.generateNextContractNumberV2 = async () => {
       },
     ]);
 
-    let nextSequence = 2600;
+    let nextSequence = 2633;
 
     if (result.length > 0 && result[0].numericPart) {
       nextSequence = result[0].numericPart + 1;
@@ -86,7 +86,7 @@ exports.generateNextContractNumberV2 = async () => {
     // console.error("Error generating contract number:", error);
     const timestamp = Date.now();
     const fallbackNumber = Math.max(
-      2600,
+      2633,
       parseInt(timestamp.toString().slice(-5))
     );
     return `JZ${String(fallbackNumber).padStart(5, "0")}`;
