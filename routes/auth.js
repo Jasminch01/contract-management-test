@@ -6,16 +6,46 @@ const router = express.Router();
 const SECRET = process.env.JWT_SECRET || "supersecret";
 
 router.post("/login", async (req, res) => {
-  const { email, password } = req.body;
-  const user = await User.findOne({ email });
+  const { email, userId } = req.body;
+  // Find user by email and userId
+  const user = await User.findOne({ email, userId });
 
-  if (!user || !(await user.comparePassword(password))) {
+  if (!user) {
     return res.status(401).json({ message: "Invalid credentials" });
   }
 
-  const token = jwt.sign({ id: user._id }, SECRET, { expiresIn: "1d" });
-  res.json({data : { token, isFirstLogin: user.isFirstLogin }});
+  const jwtpayload = { email, userId };
+
+  const token = jwt.sign(jwtpayload, SECRET, { expiresIn: "1d" });
+
+  // Set token as httpOnly cookie
+  res.cookie("token", token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production", // Use secure in production
+    sameSite: "strict",
+    maxAge: 24 * 60 * 60 * 1000, // 1 day in milliseconds
+  });
+
+  res.json({
+    data: {
+      userId: user.userId,
+      email: user.email,
+      isFirstLogin: user.isFirstLogin,
+    },
+  });
 });
+
+// router.post("/login", async (req, res) => {
+//   const { email, password } = req.body;
+//   const user = await User.findOne({ email });
+
+//   if (!user || !(await user.comparePassword(password))) {
+//     return res.status(401).json({ message: "Invalid credentials" });
+//   }
+
+//   const token = jwt.sign({ id: user._id }, SECRET, { expiresIn: "1d" });
+//   res.json({data : { token, isFirstLogin: user.isFirstLogin }});
+// });
 
 // router.post("/login", async (req, res) => {
 //   const { email, password } = req.body;
@@ -43,41 +73,43 @@ router.post("/login", async (req, res) => {
 //     token,
 //   });
 // });
-// router.post("/register", async (req, res) => {
-//   try {
-//     const { email, password, name } = req.body;
 
-//     // Check if user already exists
-//     const existingUser = await User.findOne({ email });
-//     if (existingUser) {
-//       return res.status(400).json({ message: "User already exists" });
-//     }
+router.post("/register", async (req, res) => {
+  try {
+    const { email, userId } = req.body;
 
-//     // Create new user
-//     const user = new User({
-//       email,
-//       password,
-//       name,
-//       isFirstLogin: true,
-//     });
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: "User already exists" });
+    }
 
-//     await user.save();
+    // Create new user
+    const user = new User({
+      email,
+      // password,
+      // name,
+      // isFirstLogin: true,
+      userId,
+    });
 
-//     console.log("User created:", user);
+    await user.save();
 
-//     // Generate token for immediate login after registration
-//     const token = jwt.sign({ id: user._id }, SECRET, { expiresIn: "1d" });
+    console.log("User created:", user);
 
-//     res.status(201).json({
-//       message: "User created successfully",
-//       token,
-//       isFirstLogin: user.isFirstLogin,
-//     });
-//   } catch (error) {
-//     console.error("Registration error:", error);
-//     res.status(500).json({ message: "Server error during registration" });
-//   }
-// });
+    // Generate token for immediate login after registration
+    const token = jwt.sign({ id: user._id }, SECRET, { expiresIn: "1d" });
+
+    res.status(201).json({
+      message: "User created successfully",
+      token,
+      isFirstLogin: user.isFirstLogin,
+    });
+  } catch (error) {
+    console.error("Registration error:", error);
+    res.status(500).json({ message: "Server error during registration" });
+  }
+});
 
 router.post("/update-credentials", async (req, res) => {
   const { id } = jwt.verify(req.headers.authorization.split(" ")[1], SECRET);

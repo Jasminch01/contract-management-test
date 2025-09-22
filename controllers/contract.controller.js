@@ -129,8 +129,6 @@ exports.getAllContracts = async (req, res) => {
       sortOrder = "desc",
     } = req.query;
 
-    console.log("Search params:", { buyerName, sellerName }); // Debug log
-
     const filter = { isDeleted: false };
 
     // ✅ Commodity search (case-insensitive partial match)
@@ -180,7 +178,6 @@ exports.getAllContracts = async (req, res) => {
           ],
         }).select("_id");
 
-
         if (buyers.length > 0) {
           filter.buyer = { $in: buyers.map((b) => b._id) };
         } else {
@@ -216,7 +213,7 @@ exports.getAllContracts = async (req, res) => {
       }
     }
 
-   // console.log("Final search filters applied:", filter); // 🔍 Debug log
+    // console.log("Final search filters applied:", filter); // 🔍 Debug log
 
     const skip = (Number(page) - 1) * Number(limit);
     const sort = { [sortBy]: sortOrder === "asc" ? 1 : -1 };
@@ -245,7 +242,7 @@ exports.getAllContracts = async (req, res) => {
       },
     });
   } catch (error) {
-   // console.error("Error fetching contracts:", error);
+    // console.error("Error fetching contracts:", error);
     res.status(500).json({
       message: "Error fetching contracts",
       error: error.message,
