@@ -27,8 +27,7 @@ exports.getBuyers = async (req, res) => {
     const skip = (pageNum - 1) * limitNum;
 
     // Build the query object
-    let query = {};
-
+    let query = { isDeleted: { $ne: true } }; // Exclude deleted items
     // Search filters - using $or for multiple field search
     const searchConditions = [];
 
