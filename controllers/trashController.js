@@ -3,27 +3,125 @@ const Seller = require("../models/Seller");
 const Contract = require("../models/Contract");
 
 exports.getTrashBin = async (req, res) => {
-  const { type } = req.query;
+  const { type, page = 1, limit = 10 } = req.query;
 
   try {
-    const result = {};
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
 
-    if (!type || type === "buyers") {
-      result.buyers = await Buyer.find({ isDeleted: true });
+    // Initialize result structure
+    const result = {
+      buyers: [],
+      sellers: [],
+      contracts: [],
+      pagination: {
+        currentPage: pageNum,
+        itemsPerPage: limitNum,
+        totalPages: 0,
+        totalItems: 0,
+      },
+      summary: {
+        totalBuyers: 0,
+        totalSellers: 0,
+        totalContracts: 0,
+        totalDeleted: 0,
+      },
+    };
+
+    // Always get counts for summary (regardless of filtering)
+    const [totalBuyers, totalSellers, totalContracts] = await Promise.all([
+      Buyer.countDocuments({ isDeleted: true }),
+      Seller.countDocuments({ isDeleted: true }),
+      Contract.countDocuments({ isDeleted: true }),
+    ]);
+
+    // Update summary
+    result.summary = {
+      totalBuyers,
+      totalSellers,
+      totalContracts,
+      totalDeleted: totalBuyers + totalSellers + totalContracts,
+    };
+
+    // Handle specific type filtering
+    if (type === "buyers") {
+      result.buyers = await Buyer.find({ isDeleted: true })
+        .skip(skip)
+        .limit(limitNum)
+        .sort({ deletedAt: -1 });
+
+      result.pagination.totalItems = totalBuyers;
+      result.pagination.totalPages = Math.ceil(totalBuyers / limitNum);
+    } else if (type === "sellers") {
+      result.sellers = await Seller.find({ isDeleted: true })
+        .skip(skip)
+        .limit(limitNum)
+        .sort({ deletedAt: -1 });
+
+      result.pagination.totalItems = totalSellers;
+      result.pagination.totalPages = Math.ceil(totalSellers / limitNum);
+    } else if (type === "contracts") {
+      result.contracts = await Contract.find({ isDeleted: true })
+        .skip(skip)
+        .limit(limitNum)
+        .sort({ deletedAt: -1 });
+
+      result.pagination.totalItems = totalContracts;
+      result.pagination.totalPages = Math.ceil(totalContracts / limitNum);
+    } else {
+      // No type filter - fetch all types and handle combined pagination
+      const totalItems = totalBuyers + totalSellers + totalContracts;
+      result.pagination.totalItems = totalItems;
+      result.pagination.totalPages = Math.ceil(totalItems / limitNum);
+
+      if (totalItems > 0) {
+        // Fetch all deleted items from all collections with pagination applied at database level
+        const [buyersData, sellersData, contractsData] = await Promise.all([
+          Buyer.find({ isDeleted: true }).sort({ deletedAt: -1 }).lean(),
+          Seller.find({ isDeleted: true }).sort({ deletedAt: -1 }).lean(),
+          Contract.find({ isDeleted: true }).sort({ deletedAt: -1 }).lean(),
+        ]);
+
+        // Combine all items and add type information
+        const allItems = [
+          ...buyersData.map((item) => ({ ...item, itemType: "Buyer" })),
+          ...sellersData.map((item) => ({ ...item, itemType: "Seller" })),
+          ...contractsData.map((item) => ({ ...item, itemType: "Contract" })),
+        ];
+
+        // Sort by deletedAt in descending order (most recent first)
+        allItems.sort((a, b) => new Date(b.deletedAt) - new Date(a.deletedAt));
+
+        // Apply pagination to the combined sorted array
+        const paginatedItems = allItems.slice(skip, skip + limitNum);
+
+        // Separate items back into their respective arrays
+        result.buyers = paginatedItems
+          .filter((item) => item.itemType === "Buyer")
+          .map(({ itemType, ...item }) => item);
+
+        result.sellers = paginatedItems
+          .filter((item) => item.itemType === "Seller")
+          .map(({ itemType, ...item }) => item);
+
+        result.contracts = paginatedItems
+          .filter((item) => item.itemType === "Contract")
+          .map(({ itemType, ...item }) => item);
+      }
     }
 
-    if (!type || type === "sellers") {
-      result.sellers = await Seller.find({ isDeleted: true });
-    }
-
-    if (!type || type === "contracts") {
-      result.contracts = await Contract.find({ isDeleted: true });
-    }
-
-    res.status(200).json({ data: result, success: true });
+    res.status(200).json({data :{
+      data: result,
+      success: true,
+    }});
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
+    console.error("Error in getTrashBin:", error);
+    res.status(500).json({
+      message: "Server error",
+      success: false,
+      error: error.message,
+    });
   }
 };
 
