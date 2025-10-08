@@ -166,7 +166,7 @@ exports.getAllContracts = async (req, res) => {
 
     // ✅ Status filter
     if (status) {
-      filter.status = new RegExp(status, "i");
+      filter.status = status;
     }
     if (buyerName) {
       try {
