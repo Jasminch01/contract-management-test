@@ -32,7 +32,7 @@ exports.createOrUpdatePortZoneBid = async (req, res) => {
         .status(400)
         .json({ message: "Duplicate entry for label, season and date" });
     }
-    console.log(error)
+    // console.log(error)
     res.status(500).json({ message: error.message });
   }
 };
@@ -70,7 +70,7 @@ exports.getPortZoneBids = async (req, res) => {
     }
 
     // for debugging.
-    console.log("Filter being applied:", filter);
+    // console.log("Filter being applied:", filter);
 
 
     const bids = await PortZoneBid.find(filter);
@@ -108,7 +108,6 @@ exports.deletePortZoneBid = async (req, res) => {
 exports.exportPortZoneBidsCSV = async (req, res) => {
   // try {
     const { season, startDate, endDate } = req.query;
-console.log(season, startDate, endDate)
   //   const filter = {};
   //   if (season) {
   //     filter.season = season;

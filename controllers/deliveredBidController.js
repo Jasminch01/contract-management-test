@@ -3,8 +3,6 @@ const DeliveredBid = require("../models/DeliveredBid");
 
 exports.createOrUpdateDeliveredBid = async (req, res) => {
   try {
-    console.log("Received req.body:", req.body); // Debug log
-
     const { label, season, date, monthlyValues } = req.body;
 
     if (!label || !season || !date) {
@@ -42,25 +40,36 @@ exports.createOrUpdateDeliveredBid = async (req, res) => {
     ];
 
     // Validate and process monthlyValues
-    if (monthlyValues && typeof monthlyValues === "object" && monthlyValues !== null) {
-      console.log("Raw monthlyValues structure:", JSON.stringify(monthlyValues)); // Debug log
-      // Use the keys directly from monthlyValues
+    if (
+      monthlyValues &&
+      typeof monthlyValues === "object" &&
+      monthlyValues !== null
+    ) {
       for (const key of Object.keys(monthlyValues)) {
         if (allowedMonths.includes(key)) {
           const value = monthlyValues[key];
-          if (value !== undefined && value !== null) {
-            monthlyUpdates[`monthlyValues.${key}`] = Number(value); // Convert to number
+
+          // Allow 0, null, or empty string to clear/set the value
+          if (value === null || value === "") {
+            monthlyUpdates[`monthlyValues.${key}`] = null;
+          } else if (value !== undefined) {
+            const numValue = Number(value);
+            // FIXED: Changed || to && to properly allow 0
+            if (!isNaN(numValue)) {
+              monthlyUpdates[`monthlyValues.${key}`] = numValue;
+            }
           }
         } else {
-          console.warn(`Ignoring invalid month key: ${key}`);
+          // console.warn(`Ignoring invalid month key: ${key}`);
         }
       }
     } else if (monthlyValues !== undefined) {
-      return res.status(400).json({ message: "monthlyValues must be an object if provided." });
+      return res
+        .status(400)
+        .json({ message: "monthlyValues must be an object if provided." });
     }
 
-    // Debug purpose
-    console.log("Updating bid with payload:", { label, season, date: parsedDate, monthlyUpdates });
+    // console.log("Update payload:", monthlyUpdates);
 
     const updatedBid = await DeliveredBid.findOneAndUpdate(
       { label, season, date: parsedDate },
@@ -72,12 +81,16 @@ exports.createOrUpdateDeliveredBid = async (req, res) => {
       },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
-
-    res.status(200).json({ data: updatedBid });
-  } 
-  catch(error){
-    console.error("Error in createOrUpdateDeliveredBid:", error); // Log full error
-    res.status(500).json({ message: error.message });
+    res.status(200).json({
+      success: true,
+      data: updatedBid,
+    });
+  } catch (error) {
+    console.error("Error in createOrUpdateDeliveredBid:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
@@ -134,8 +147,8 @@ exports.exportDeliveredBidsCSV = async (req, res) => {
 
     if (startDate && endDate) {
       filter.date = {
-        $gte: moment.utc(startDate).startOf('day').toDate(),
-        $lte: moment.utc(endDate).endOf('day').toDate(),
+        $gte: moment.utc(startDate).startOf("day").toDate(),
+        $lte: moment.utc(endDate).endOf("day").toDate(),
       };
     }
 

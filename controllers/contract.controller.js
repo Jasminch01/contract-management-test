@@ -231,7 +231,7 @@ exports.getAllContracts = async (req, res) => {
         .limit(Number(limit)),
       Contract.countDocuments(filter),
     ]);
-
+    
     // ✅ Fixed response structure
     res.json({
       data: {
