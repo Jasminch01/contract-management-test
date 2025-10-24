@@ -90,43 +90,6 @@ exports.getBuyers = async (req, res) => {
   }
 };
 
-// exports.getBuyers = async(req, res) => {
-//     try {
-//         // const buyers = await Buyer.find().sort({ createdAt: -1});
-//         // res.json(buyers)
-//         const filter = req.query.filter;
-//         const page = Number(req.query.page) || 1;
-//         const limit = Number(req.query.limit) || 10;
-
-//         let query = { isDeleted: false };
-
-//         if(filter === 'last-week'){
-//           const lastWeek = new Date();
-//           lastWeek.setDate(lastWeek.getDate()-7);
-//           query.createdAt = { $gte: lastWeek };
-//         }
-
-//         const skip = (page - 1) * limit;
-
-//         const [buyers, total] = await Promise.all([
-//           Buyer.find(query).sort({createdAt: -1})
-//             .skip(skip)
-//             .limit(limit),
-//           Buyer.countDocuments(query)
-//         ]);
-
-//         res.status(200).json({
-//           page,
-//           totalPages: Math.ceil(total / limit),
-//           total,
-//           data: buyers
-//         });
-//     }
-//     catch(error){
-//         res.status(500).json({message: 'Error fetching buyers', error});
-//     }
-// }
-
 exports.getBuyer = async (req, res) => {
   try {
     const buyer = await Buyer.findById(req.params.id);

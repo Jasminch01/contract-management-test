@@ -1,55 +1,45 @@
-const { XeroClient } = require('xero-node');
-const XeroToken = require('../models/XeroToken');
+const { XeroClient } = require("xero-node");
+const XeroToken = require("../models/XeroToken");
 
-// Initialize Xero Client
+// Xero Client
 const xero = new XeroClient({
   clientId: `6030C0D1BF0B42C59AC0056C098BAD87`,
+  // clientId: process.env.XERO_CLIENT_ID,
   clientSecret: `QfxeO6UQZb3ZPR_0z1EPMtdXDGhLroFaEFJC9dSYN-C9iKzI`,
+  // clientSecret: process.env.XERO_CLIENT_SECRET,
   redirectUris: [`http://localhost:8000/api/auth/xero/callback`],
+  // redirectUris: [process.env.XERO_REDIRECT_URI],
   scopes: [
-    'openid',
-    'profile',
-    'email',
-    'accounting.transactions',
-    'accounting.contacts',
-    'accounting.settings',
-    'offline_access',
+    "openid",
+    "profile",
+    "email",
+    "accounting.transactions",
+    "accounting.contacts",
+    "accounting.settings",
+    "offline_access",
   ],
 });
 
-// Get authorization URL
+// Get auth URL
 function getXeroAuthUrl() {
   return xero.buildConsentUrl();
 }
 
-// Get valid access token (refresh if needed)
+// Get access token
 async function getXeroAccessToken() {
   try {
-    console.log('🔍 Checking for Xero tokens in database...');
-    
     const tokenData = await XeroToken.findOne().sort({ updatedAt: -1 });
-    console.log('Token data found:', tokenData ? 'YES' : 'NO');
-    
+
     if (!tokenData) {
-      console.error('❌ No token found in database');
-      throw new Error('Xero not connected. Please authorize first.');
+      throw new Error("Xero not connected. Please authorize first.");
     }
 
-    console.log('Token details:', {
-      tenantName: tokenData.tenantName,
-      expiresAt: tokenData.expiresAt,
-      hasAccessToken: !!tokenData.accessToken,
-      hasRefreshToken: !!tokenData.refreshToken
-    });
-
-    // Check if token is expired (with 5 min buffer)
+    // Check if token is expired
     const now = new Date();
     const expiresAt = new Date(tokenData.expiresAt);
     const bufferTime = 5 * 60 * 1000; // 5 minutes
 
     if (now.getTime() >= expiresAt.getTime() - bufferTime) {
-      console.log('🔄 Token expired, refreshing...');
-      
       xero.setTokenSet({
         access_token: tokenData.accessToken,
         refresh_token: tokenData.refreshToken,
@@ -57,10 +47,12 @@ async function getXeroAccessToken() {
       });
 
       const newTokenSet = await xero.refreshToken();
-      
-      // Update database with new tokens
+
+      // Update DB new tokens
       const newExpiresAt = new Date();
-      newExpiresAt.setSeconds(newExpiresAt.getSeconds() + newTokenSet.expires_in);
+      newExpiresAt.setSeconds(
+        newExpiresAt.getSeconds() + newTokenSet.expires_in
+      );
 
       await XeroToken.findByIdAndUpdate(tokenData._id, {
         accessToken: newTokenSet.access_token,
@@ -69,14 +61,10 @@ async function getXeroAccessToken() {
         updatedAt: new Date(),
       });
 
-      console.log('✅ Token refreshed successfully');
       return newTokenSet.access_token;
     }
-
-    console.log('✅ Using existing valid token');
     return tokenData.accessToken;
   } catch (error) {
-    console.error('❌ Error in getXeroAccessToken:', error.message);
     throw error;
   }
 }
@@ -84,9 +72,9 @@ async function getXeroAccessToken() {
 // Get Xero tenant ID
 async function getXeroTenantId() {
   const tokenData = await XeroToken.findOne().sort({ updatedAt: -1 });
-  
+
   if (!tokenData) {
-    throw new Error('Xero not connected. Please authorize first.');
+    throw new Error("Xero not connected. Please authorize first.");
   }
 
   return tokenData.tenantId;
@@ -101,73 +89,171 @@ async function isXeroConnected() {
 const getDefaultTaxType = async (xero, tenantId) => {
   try {
     const { body } = await xero.accountingApi.getTaxRates(tenantId);
-    const defaultTax = body.taxRates.find(rate => rate.name === 'GST on Income') 
-      || body.taxRates.find(rate => rate.taxType === 'OUTPUT') 
-      || body.taxRates[0];
+    const defaultTax =
+      body.taxRates.find((rate) => rate.name === "GST on Income") ||
+      body.taxRates.find((rate) => rate.taxType === "OUTPUT") ||
+      body.taxRates[0];
 
-    return defaultTax?.taxType || 'NONE';
+    return defaultTax?.taxType || "NONE";
   } catch (err) {
-    console.error('⚠️ Failed to fetch tax type:', err.message);
-    return 'NONE';
+    console.error("⚠️ Failed to fetch tax type:", err.message);
+    return "NONE";
   }
 };
-
 
 const getDefaultRevenueAccount = async (xero, tenantId) => {
   try {
     const { body } = await xero.accountingApi.getAccounts(tenantId);
-    const revenueAccount = body.accounts.find(acc => acc.type === 'REVENUE' && acc.code)
-      || body.accounts.find(acc => acc.name?.toLowerCase().includes('sales'))
-      || body.accounts[0];
+    const revenueAccount =
+      body.accounts.find((acc) => acc.type === "REVENUE" && acc.code) ||
+      body.accounts.find((acc) => acc.name?.toLowerCase().includes("sales")) ||
+      body.accounts[0];
 
-    return revenueAccount?.code || '200';
+    return revenueAccount?.code || "200";
   } catch (err) {
-    console.error('⚠️ Failed to fetch revenue account:', err.message);
-    return '200';
+    console.error("⚠️ Failed to fetch revenue account:", err.message);
+    return "200";
   }
 };
 
 const buildLineItems = (contract, taxType, accountCode) => {
   try {
-    if (!contract.items || !Array.isArray(contract.items) || contract.items.length === 0) {
-      return [
-        {
-          description: contract.description || `Contract ${contract.contractNumber}`,
-          quantity: 1,
-          unitAmount: contract.priceExGST || 0,
-          accountCode,
-          taxType,
-        },
-      ];
+    const lineItems = [];
+
+    // Helper function to calculate brokerage amount
+    const calculateBrokerageAmount = () => {
+      const brokerageRate = contract.brokerageRate || 0;
+      const priceExGST = contract.priceExGST || 0;
+      const tonnes = contract.tonnes || 0;
+      
+      // Calculate total brokerage
+      const totalBrokerage = (priceExGST * tonnes * brokerageRate) / 100;
+      
+      // If split between buyer and seller, divide by 2
+      if (contract.brokeragePayableBy === 'buyer & seller' || 
+          contract.brokeragePayableBy === 'seller & buyer') {
+        return totalBrokerage / 2;
+      }
+      
+      return totalBrokerage;
+    };
+
+    const brokerageAmount = calculateBrokerageAmount();
+
+    // Build description with all contract details
+    const descriptionParts = [
+      `Contract: ${contract.contractNumber || 'N/A'}`,
+      `${contract.tonnes || 0}mt ${contract.grade || ''}`,
+      `Seller: ${contract.seller?.legalName || 'Unknown'}`,
+      `Buyer: ${contract.buyer?.name || 'Unknown'}`,
+    ];
+
+    // Add optional details
+    if (contract.deliveryDestination) {
+      descriptionParts.push(`Destination: ${contract.deliveryDestination}`);
+    }
+    if (contract.deliveryOption) {
+      descriptionParts.push(`Delivery: ${contract.deliveryOption}`);
+    }
+    if (contract.notes) {
+      descriptionParts.push(`Notes: ${contract.notes}`);
     }
 
-    return contract.items.map((item) => ({
-      description: item.description || 'Item',
-      quantity: item.quantity || 1,
-      unitAmount: item.unitPrice || 0,
-      accountCode,
+    const description = descriptionParts.join(' | ');
+
+    // Create the line item
+    // Xero will automatically calculate GST based on taxType
+    // The columns will be: Description, Quantity, Unit Price, GST, Amount AUD
+    lineItems.push({
+      description: description,
+      quantity: 1, // Quantity = 1 (total already calculated)
+      unitAmount: contract.priceExGST, // Unit Price (Ex GST)
+      accountCode: accountCode, // Revenue account code
+      taxType: taxType, // Tax type (e.g., "OUTPUT2" for 10% GST in Australia)
+    });
+
+    console.log(`✅ Built line item for contract ${contract.contractNumber}:`, {
+      description: description.substring(0, 50) + '...',
+      quantity: 1,
+      unitAmount: contract.priceExGST,
       taxType,
-    }));
+      accountCode
+    });
+
+    return lineItems;
+
   } catch (err) {
-    console.error('⚠️ Failed to build line items:', err.message);
-    throw new Error('Failed to build invoice line items.');
+    console.error("⚠️ Failed to build line items:", err.message);
+    console.error("Contract data:", {
+      contractNumber: contract?.contractNumber,
+      priceExGST: contract?.priceExGST,
+      tonnes: contract?.tonnes,
+      brokerageRate: contract?.brokerageRate
+    });
+    
+    // Fallback line item
+    return [
+      {
+        description: `Contract ${contract.contractNumber || 'Unknown'} - Brokerage Fee`,
+        quantity: 1,
+        unitAmount: 0,
+        accountCode,
+        taxType,
+      },
+    ];
   }
 };
 
-// --- ✅ Fixed Helper: Find or Create Contact ---
+// const buildLineItems = (contract, taxType, accountCode) => {
+//   try {
+//     if (
+//       !contract.items ||
+//       !Array.isArray(contract.items) ||
+//       contract.items.length === 0
+//     ) {
+//       return [
+//         {
+//           description:
+//             contract.description || `Contract ${contract.contractNumber}`,
+//           quantity: 1,
+//           unitAmount: contract.priceExGST || 0,
+//           accountCode,
+//           taxType,
+//         },
+//       ];
+//     }
+
+//     return contract.items.map((item) => ({
+//       description: item.description || "Item",
+//       quantity: item.quantity || 1,
+//       unitAmount: item.unitPrice || 0,
+//       accountCode,
+//       taxType,
+//     }));
+//   } catch (err) {
+//     console.error("⚠️ Failed to build line items:", err.message);
+//     throw new Error("Failed to build invoice line items.");
+//   }
+// };
+
+// Find or Create Contact
 const findOrCreateContact = async (xero, tenantId, buyer) => {
   try {
-    // Try to find existing contact by email
+    // find contact by email
     const { body } = await xero.accountingApi.getContacts(
       tenantId,
       undefined,
-      `EmailAddress=="${buyer.email}"`
+      `EmailAddress=="${contactData}"`
     );
 
     if (body.contacts?.length > 0) {
       const existing = body.contacts[0];
       if (existing.contactID && /^[0-9a-fA-F-]{36}$/.test(existing.contactID)) {
-        console.log('✅ Found existing contact:', existing.name, existing.contactID);
+        console.log(
+          "✅ Found existing contact:",
+          existing.name,
+          existing.contactID
+        );
         return existing.contactID;
       }
     }
@@ -180,7 +266,7 @@ const findOrCreateContact = async (xero, tenantId, buyer) => {
           emailAddress: buyer.email,
           contactPersons: [
             {
-              firstName: buyer.name?.split(' ')[0] || buyer.name,
+              firstName: buyer.name?.split(" ")[0] || buyer.name,
               emailAddress: buyer.email,
             },
           ],
@@ -191,19 +277,18 @@ const findOrCreateContact = async (xero, tenantId, buyer) => {
     const created = await xero.accountingApi.createContacts(tenantId, payload);
     const newContact = created.body.contacts[0];
 
-    console.log('✅ Created new contact:', newContact.name, newContact.contactID);
-
-    if (!newContact?.contactID || !/^[0-9a-fA-F-]{36}$/.test(newContact.contactID)) {
-      throw new Error('Invalid contactID returned from Xero');
+    if (
+      !newContact?.contactID ||
+      !/^[0-9a-fA-F-]{36}$/.test(newContact.contactID)
+    ) {
+      throw new Error("Invalid contactID returned from Xero");
     }
 
     return newContact.contactID;
   } catch (err) {
-    console.error('⚠️ Failed to find/create contact:', err.response?.body || err.message);
-    throw new Error('Failed to find or create buyer contact in Xero.');
+    throw new Error("Failed to find or create buyer contact in Xero.");
   }
 };
-
 
 
 module.exports = {
@@ -215,5 +300,5 @@ module.exports = {
   getDefaultTaxType,
   getDefaultRevenueAccount,
   buildLineItems,
-  findOrCreateContact
+  findOrCreateContact,
 };
