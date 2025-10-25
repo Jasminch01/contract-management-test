@@ -15,7 +15,7 @@ const deliveredBidRoutes = require("./routes/deliveredBidRoutes.js");
 const authRoutes = require("./routes/auth.js");
 const authMiddleware = require("./middelwares/authMiddleware.js");
 const dashboardRoutes = require("./routes/dashboardRoutes.js");
-const xeroRoutes = require("./routes/xero.js")
+const xeroRoutes = require("./routes/xero.js");
 
 dotenv.config();
 connectDB();
@@ -47,7 +47,7 @@ app.use("/api", authMiddleware, trashRoutes);
 app.use("/api/portZone-bids", authMiddleware, portZoneBids);
 app.use("/api/delivered-bids", authMiddleware, deliveredBidRoutes);
 app.use("/api/dashboard", authMiddleware, dashboardRoutes);
-app.use("/api", xeroRoutes)
+app.use("/api", xeroRoutes);
 
 app.use("/", (req, res) => {
   // console.log("API is running");

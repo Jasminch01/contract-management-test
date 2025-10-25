@@ -11,7 +11,7 @@ const {
   buildLineItems,
   findOrCreateContact,
 } = require("../utils/xero");
-const { Invoice, Contact, LineItem } = require("xero-node");
+const { Invoice, Contact, LineItem, LineAmountTypes } = require("xero-node");
 
 exports.authorize = async (req, res) => {
   try {
@@ -218,29 +218,120 @@ exports.getStatus = async (req, res) => {
 
 exports.createInvoice = async (req, res) => {
   try {
-    const { contractId, invoiceDate, dueDate, reference, notes } = req.body;
+    const { contractIds, contractId, invoiceDate, dueDate, reference, notes } =
+      req.body;
 
-    // conditions
-    if (!contractId) {
-      return res.status(400).json({ message: "Contract ID is required" });
-    }
+    let contractIdArray;
 
-    const contract = await Contract.findById(contractId).populate(
-      "buyer seller"
-    );
-
-    if (!contract) {
-      return res.status(404).json({ message: "Contract not found" });
-    }
-
-    if (!contract.buyer?.email || !contract.buyer?.name) {
+    if (contractIds) {
+      contractIdArray = Array.isArray(contractIds)
+        ? contractIds
+        : [contractIds];
+    } else if (contractId) {
+      contractIdArray = [contractId];
+    } else {
       return res.status(400).json({
         message:
-          "Buyer information is incomplete. Name and email are required.",
+          "Contract ID is required. Please provide either 'contractId' or 'contractIds'",
       });
     }
 
-    // Setup Xero client
+    if (contractIdArray.length === 0) {
+      return res.status(400).json({
+        message: "At least one contract ID is required",
+      });
+    }
+
+    const contracts = await Contract.find({
+      _id: { $in: contractIdArray },
+    }).populate("buyer seller");
+
+    if (!contracts || contracts.length === 0) {
+      return res.status(404).json({
+        message: "Contract(s) not found",
+      });
+    }
+
+    // Determine invoice recipient based on brokeragePayableBy
+    const firstContract = contracts[0];
+    const brokeragePayableBy =
+      firstContract.brokeragePayableBy?.toLowerCase() || "buyer";
+
+    let invoiceRecipient;
+    let recipientType;
+
+    if (brokeragePayableBy.includes("seller")) {
+      // Invoice should go to seller
+      recipientType = "seller";
+      invoiceRecipient = firstContract.seller;
+
+      // Validate seller information
+      if (!invoiceRecipient?.email || !invoiceRecipient?.legalName) {
+        return res.status(400).json({
+          message:
+            "Seller information is incomplete. Name and email are required.",
+          sellerInfo: {
+            hasName: !!invoiceRecipient?.legalName,
+            hasEmail: !!invoiceRecipient?.email,
+          },
+        });
+      }
+
+      // Check if all contracts have the same seller
+      const sameSeller = contracts.every(
+        (c) =>
+          c.seller?.email?.toLowerCase().trim() ===
+          invoiceRecipient.email?.toLowerCase().trim()
+      );
+
+      if (!sameSeller && contracts.length > 1) {
+        return res.status(400).json({
+          message:
+            "All contracts must have the same seller when brokerage is payable by seller.",
+          sellers: contracts.map((c) => ({
+            contractNumber: c.contractNumber,
+            sellerName: c.seller?.legalName,
+            sellerEmail: c.seller?.email,
+          })),
+        });
+      }
+    } else {
+      // Invoice should go to buyer
+      recipientType = "buyer";
+      invoiceRecipient = firstContract.buyer;
+
+      // Validate buyer information
+      if (!invoiceRecipient?.email || !invoiceRecipient?.name) {
+        return res.status(400).json({
+          message:
+            "Buyer information is incomplete. Name and email are required.",
+          buyerInfo: {
+            hasName: !!invoiceRecipient?.name,
+            hasEmail: !!invoiceRecipient?.email,
+          },
+        });
+      }
+
+      // Check if all contracts have the same buyer
+      const sameBuyer = contracts.every(
+        (c) =>
+          c.buyer?.email?.toLowerCase().trim() ===
+          invoiceRecipient.email?.toLowerCase().trim()
+      );
+
+      if (!sameBuyer && contracts.length > 1) {
+        return res.status(400).json({
+          message:
+            "All contracts must have the same buyer when brokerage is payable by buyer.",
+          buyers: contracts.map((c) => ({
+            contractNumber: c.contractNumber,
+            buyerName: c.buyer?.name,
+            buyerEmail: c.buyer?.email,
+          })),
+        });
+      }
+    }
+
     const accessToken = await getXeroAccessToken();
     const tenantId = await getXeroTenantId();
 
@@ -250,29 +341,53 @@ exports.createInvoice = async (req, res) => {
       expires_in: 1800,
     });
 
-    // Get Xero settings (tax type and account code)
     const [taxType, accountCode] = await Promise.all([
       getDefaultTaxType(xero, tenantId),
       getDefaultRevenueAccount(xero, tenantId),
     ]);
 
-    // Find or create contact in Xero
-    const contactId = await findOrCreateContact(xero, tenantId, contract.buyer);
-
-    if (!contactId) {
-      return res
-        .status(400)
-        .json({ message: "Failed to find or create Xero contact." });
+    let contactId;
+    try {
+      contactId = await findOrCreateContact(
+        xero,
+        tenantId,
+        invoiceRecipient,
+        recipientType
+      );
+    } catch (contactError) {
+      throw new Error(
+        `Failed to find or create Xero contact: ${contactError.message}`
+      );
     }
 
-    // Build line items
-    const lineItemsData = buildLineItems(contract, taxType, accountCode);
+    if (!contactId) {
+      return res.status(400).json({
+        message: "Failed to find or create Xero contact.",
+        recipientInfo: {
+          type: recipientType,
+          name:
+            recipientType === "seller"
+              ? invoiceRecipient.legalName
+              : invoiceRecipient.name,
+          email: invoiceRecipient.email,
+        },
+      });
+    }
 
-    // amount
-    const totalAmount = lineItemsData.reduce(
-      (sum, item) => sum + (item.quantity || 1) * (item.unitAmount || 0),
-      0
-    );
+    const allLineItems = [];
+    let totalAmount = 0;
+
+    for (const contract of contracts) {
+      const lineItemsData = buildLineItems(contract, taxType, accountCode);
+
+      const contractAmount = lineItemsData.reduce(
+        (sum, item) => sum + (item.quantity || 1) * (item.unitAmount || 0),
+        0
+      );
+
+      totalAmount += contractAmount;
+      allLineItems.push(...lineItemsData);
+    }
 
     if (totalAmount === 0) {
       return res.status(400).json({
@@ -281,7 +396,6 @@ exports.createInvoice = async (req, res) => {
       });
     }
 
-    // Create invoice
     const invoice = new Invoice();
     invoice.type = Invoice.TypeEnum.ACCREC;
     invoice.contact = new Contact();
@@ -294,16 +408,21 @@ exports.createInvoice = async (req, res) => {
         due.setDate(due.getDate() + 30);
         return due.toISOString().split("T")[0];
       })();
-    invoice.reference = reference || `Contract ${contract.contractNumber}`;
-    invoice.lineAmountTypes = Invoice.LineAmountTypesEnum;
+
+    invoice.reference =
+      reference ||
+      (contracts.length === 1
+        ? `Contract ${contracts[0].contractNumber}`
+        : `Brokerage Invoice - ${contracts.length} contracts`);
+
+    invoice.lineAmountTypes = LineAmountTypes.Exclusive;
     invoice.status = Invoice.StatusEnum.DRAFT;
 
     if (notes) {
       invoice.notes = notes;
     }
 
-    // Build LineItem
-    invoice.lineItems = lineItemsData.map((item) => {
+    invoice.lineItems = allLineItems.map((item) => {
       const lineItem = new LineItem();
       lineItem.description = item.description;
       lineItem.quantity = item.quantity;
@@ -312,6 +431,7 @@ exports.createInvoice = async (req, res) => {
       lineItem.taxType = item.taxType;
       return lineItem;
     });
+
     const invoices = { invoices: [invoice] };
 
     const invoiceResponse = await xero.accountingApi.createInvoices(
@@ -329,16 +449,21 @@ exports.createInvoice = async (req, res) => {
       );
     }
 
-    // Update contract
-    await Contract.findByIdAndUpdate(contractId, {
-      xeroInvoiceId: createdInvoice.invoiceID,
-      xeroInvoiceNumber: createdInvoice.invoiceNumber,
-      status: "Invoiced",
-    });
+    await Contract.updateMany(
+      { _id: { $in: contractIdArray } },
+      {
+        xeroInvoiceId: createdInvoice.invoiceID,
+        xeroInvoiceNumber: createdInvoice.invoiceNumber,
+        status: "Invoiced",
+      }
+    );
 
     return res.status(200).json({
       success: true,
-      message: "Invoice created successfully in Xero",
+      message:
+        contracts.length === 1
+          ? "Invoice created successfully in Xero"
+          : `Invoice created successfully in Xero for ${contracts.length} contracts`,
       data: {
         invoiceId: createdInvoice.invoiceID,
         invoiceNumber: createdInvoice.invoiceNumber,
@@ -347,6 +472,13 @@ exports.createInvoice = async (req, res) => {
         totalTax: createdInvoice.totalTax,
         amountDue: createdInvoice.amountDue,
         status: createdInvoice.status,
+        contractCount: contracts.length,
+        contractNumbers: contracts.map((c) => c.contractNumber),
+        recipientType: recipientType,
+        recipientName:
+          recipientType === "seller"
+            ? invoiceRecipient.legalName
+            : invoiceRecipient.name,
       },
     });
   } catch (error) {

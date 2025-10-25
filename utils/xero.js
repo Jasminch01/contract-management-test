@@ -125,16 +125,18 @@ const buildLineItems = (contract, taxType, accountCode) => {
       const brokerageRate = contract.brokerageRate || 0;
       const priceExGST = contract.priceExGST || 0;
       const tonnes = contract.tonnes || 0;
-      
+
       // Calculate total brokerage
       const totalBrokerage = (priceExGST * tonnes * brokerageRate) / 100;
-      
+
       // If split between buyer and seller, divide by 2
-      if (contract.brokeragePayableBy === 'buyer & seller' || 
-          contract.brokeragePayableBy === 'seller & buyer') {
+      if (
+        contract.brokeragePayableBy === "buyer & seller" ||
+        contract.brokeragePayableBy === "seller & buyer"
+      ) {
         return totalBrokerage / 2;
       }
-      
+
       return totalBrokerage;
     };
 
@@ -142,10 +144,10 @@ const buildLineItems = (contract, taxType, accountCode) => {
 
     // Build description with all contract details
     const descriptionParts = [
-      `Contract: ${contract.contractNumber || 'N/A'}`,
-      `${contract.tonnes || 0}mt ${contract.grade || ''}`,
-      `Seller: ${contract.seller?.legalName || 'Unknown'}`,
-      `Buyer: ${contract.buyer?.name || 'Unknown'}`,
+      `Contract: ${contract.contractNumber || "N/A"}`,
+      `${contract.tonnes || 0}mt ${contract.grade || ""}`,
+      `Seller: ${contract.seller?.legalName || "Unknown"}`,
+      `Buyer: ${contract.buyer?.name || "Unknown"}`,
     ];
 
     // Add optional details
@@ -159,7 +161,7 @@ const buildLineItems = (contract, taxType, accountCode) => {
       descriptionParts.push(`Notes: ${contract.notes}`);
     }
 
-    const description = descriptionParts.join(' | ');
+    const description = descriptionParts.join(" | ");
 
     // Create the line item
     // Xero will automatically calculate GST based on taxType
@@ -173,28 +175,29 @@ const buildLineItems = (contract, taxType, accountCode) => {
     });
 
     console.log(`✅ Built line item for contract ${contract.contractNumber}:`, {
-      description: description.substring(0, 50) + '...',
+      description: description.substring(0, 50) + "...",
       quantity: 1,
       unitAmount: contract.priceExGST,
       taxType,
-      accountCode
+      accountCode,
     });
 
     return lineItems;
-
   } catch (err) {
     console.error("⚠️ Failed to build line items:", err.message);
     console.error("Contract data:", {
       contractNumber: contract?.contractNumber,
       priceExGST: contract?.priceExGST,
       tonnes: contract?.tonnes,
-      brokerageRate: contract?.brokerageRate
+      brokerageRate: contract?.brokerageRate,
     });
-    
+
     // Fallback line item
     return [
       {
-        description: `Contract ${contract.contractNumber || 'Unknown'} - Brokerage Fee`,
+        description: `Contract ${
+          contract.contractNumber || "Unknown"
+        } - Brokerage Fee`,
         quantity: 1,
         unitAmount: 0,
         accountCode,
@@ -237,59 +240,135 @@ const buildLineItems = (contract, taxType, accountCode) => {
 // };
 
 // Find or Create Contact
-const findOrCreateContact = async (xero, tenantId, buyer) => {
-  try {
-    // find contact by email
-    const { body } = await xero.accountingApi.getContacts(
-      tenantId,
-      undefined,
-      `EmailAddress=="${contactData}"`
-    );
+const findOrCreateContact = async (
+  xero,
+  tenantId,
+  recipient,
+  recipientType = "buyer"
+) => {
+  const name =
+    recipientType === "seller" ? recipient.legalName : recipient.name;
+  const email = recipient.email;
 
-    if (body.contacts?.length > 0) {
-      const existing = body.contacts[0];
-      if (existing.contactID && /^[0-9a-fA-F-]{36}$/.test(existing.contactID)) {
-        console.log(
-          "✅ Found existing contact:",
-          existing.name,
+  try {
+    // Validate recipient information first
+    if (!recipient) {
+      throw new Error(`${recipientType} object is null or undefined`);
+    }
+
+    if (!email || typeof email !== "string" || !email.trim()) {
+      throw new Error(`Invalid ${recipientType} email: ${email}`);
+    }
+
+    if (!name || typeof name !== "string" || !name.trim()) {
+      throw new Error(`Invalid ${recipientType} name: ${name}`);
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanName = name.trim();
+
+    // Step 1: Try to find existing contact by email
+    let searchResponse;
+    try {
+      searchResponse = await xero.accountingApi.getContacts(
+        tenantId,
+        undefined,
+        `EmailAddress=="${cleanEmail}"`
+      );
+    } catch (searchError) {
+      // Continue to create new contact
+      searchResponse = null;
+    }
+
+    // Step 2: If found, return existing contact ID
+    if (searchResponse?.body?.contacts?.length > 0) {
+      const existing = searchResponse.body.contacts[0];
+
+      // Validate UUID format
+      if (
+        existing.contactID &&
+        /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/i.test(
           existing.contactID
-        );
+        )
+      ) {
         return existing.contactID;
       }
     }
 
-    // Otherwise, create a new contact
+    // Step 3: Create new contact if not found
+    const nameParts = cleanName.split(" ");
+    const firstName = nameParts[0] || cleanName;
+    const lastName = nameParts.slice(1).join(" ") || "";
+
     const payload = {
       contacts: [
         {
-          name: buyer.name,
-          emailAddress: buyer.email,
-          contactPersons: [
-            {
-              firstName: buyer.name?.split(" ")[0] || buyer.name,
-              emailAddress: buyer.email,
-            },
-          ],
+          name: cleanName,
+          emailAddress: cleanEmail,
+          contactPersons: firstName
+            ? [
+                {
+                  firstName: firstName,
+                  lastName: lastName,
+                  emailAddress: cleanEmail,
+                },
+              ]
+            : undefined,
         },
       ],
     };
 
-    const created = await xero.accountingApi.createContacts(tenantId, payload);
-    const newContact = created.body.contacts[0];
+    let created;
+    try {
+      created = await xero.accountingApi.createContacts(
+        tenantId,
+        payload,
+        false
+      );
+    } catch (createError) {
+      throw createError;
+    }
+
+    const newContact = created?.body?.contacts?.[0];
+
+    if (!newContact) {
+      throw new Error("No contact returned from Xero API after creation");
+    }
+
+    if (!newContact.contactID) {
+      throw new Error("Contact created but no contactID returned");
+    }
 
     if (
-      !newContact?.contactID ||
-      !/^[0-9a-fA-F-]{36}$/.test(newContact.contactID)
+      !/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/i.test(
+        newContact.contactID
+      )
     ) {
-      throw new Error("Invalid contactID returned from Xero");
+      throw new Error(`Invalid contactID format: ${newContact.contactID}`);
     }
 
     return newContact.contactID;
   } catch (err) {
-    throw new Error("Failed to find or create buyer contact in Xero.");
+    // Provide detailed error message
+    let errorMessage = `Failed to find or create ${recipientType} contact in Xero`;
+
+    if (err.response?.body) {
+      const xeroError = err.response.body;
+      if (xeroError.Elements?.[0]?.ValidationErrors?.[0]?.Message) {
+        errorMessage += `: ${xeroError.Elements[0].ValidationErrors[0].Message}`;
+      } else if (xeroError.Message) {
+        errorMessage += `: ${xeroError.Message}`;
+      }
+    } else if (
+      err.message &&
+      !err.message.includes("Failed to find or create")
+    ) {
+      errorMessage += `: ${err.message}`;
+    }
+
+    throw new Error(errorMessage);
   }
 };
-
 
 module.exports = {
   xero,
