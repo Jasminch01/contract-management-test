@@ -7,7 +7,6 @@ const cookieParser = require("cookie-parser");
 // importing external files.
 const connectDB = require("./config/db.js");
 const contractRoutes = require("./routes/contract.routes.js");
-const path = require("path");
 const buyerRoutes = require("./routes/buyer.routes.js");
 const sellerRoutes = require("./routes/seller.routes.js");
 const trashRoutes = require("./routes/trash.js");
@@ -16,6 +15,7 @@ const deliveredBidRoutes = require("./routes/deliveredBidRoutes.js");
 const authRoutes = require("./routes/auth.js");
 const authMiddleware = require("./middelwares/authMiddleware.js");
 const dashboardRoutes = require("./routes/dashboardRoutes.js");
+const xeroRoutes = require("./routes/xero.js");
 
 dotenv.config();
 connectDB();
@@ -38,8 +38,6 @@ app.use(
 app.use(express.json());
 app.use(cookieParser());
 
-///
-
 // Contract API route
 app.use("/api/auth", authRoutes);
 app.use("/api/contracts", authMiddleware, contractRoutes);
@@ -49,6 +47,7 @@ app.use("/api", authMiddleware, trashRoutes);
 app.use("/api/portZone-bids", authMiddleware, portZoneBids);
 app.use("/api/delivered-bids", authMiddleware, deliveredBidRoutes);
 app.use("/api/dashboard", authMiddleware, dashboardRoutes);
+app.use("/api", xeroRoutes);
 
 app.use("/", (req, res) => {
   // console.log("API is running");

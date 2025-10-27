@@ -304,7 +304,7 @@ exports.updateContract = async (req, res) => {
     if (!updated) {
       return res.status(400).json({ message: "Contract not found" });
     }
-    res.status(200).json(updated); // Include contractDate in response
+    res.status(200).json(updated);
   } catch (error) {
     res.status(500).json({ message: "Error updating contract", error });
   }
@@ -320,101 +320,6 @@ exports.deleteContract = async (req, res) => {
     res.status(200).json({ message: "Contract deleted successfully" });
   } catch (error) {
     res.status(500).json({ message: "Error deleting contract", error });
-  }
-};
-
-// @desc GET /api/contracts/:id/preview
-exports.previewContract = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const contract = await Contract.findById(id);
-
-    if (!contract) {
-      return res.status(404).json({ message: "Contract not found" });
-    }
-
-    res.status(200).json({
-      preview: {
-        contractDate: contract.contractDate,
-        buyer: contract.buyer,
-        seller: contract.seller,
-        grade: contract.grade,
-        commodity: contract.commodity,
-        priceExGST: contract.priceExGST,
-        deliveryPeriod: contract.deliveryPeriod,
-        deliveryDestination: contract.deliveryDestination,
-        notes: contract.notes,
-        specialCondition: contract.specialCondition,
-        contractType: contract.contractType,
-        createdAt: contract.createdAt,
-      },
-    });
-  } catch (error) {
-    console.error("Error previewing contract:", error);
-    res.status(500).json({ message: "Server Error" });
-  }
-};
-
-// @desc GET /api/contracts/:id/export-pdf
-exports.exportContractPDF = async (req, res) => {
-  try {
-    const contract = await Contract.findById(req.params.id);
-
-    if (!contract) {
-      return res.status(404).json({ message: "Contract not found" });
-    }
-
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename=Contract_${contract._id}.pdf`
-    );
-
-    const doc = new PDFDocument();
-    doc.pipe(res);
-
-    doc.fontSize(20).text("Contract Details", { align: "center" }).moveDown();
-
-    Object.entries(contract.toObject()).forEach(([key, value]) => {
-      if (value instanceof Date) {
-        value = new Date(value).toLocaleDateString();
-      } else if (typeof value === "object" && value !== null) {
-        value = JSON.stringify(value, null, 2);
-      }
-      doc.fontSize(12).text(`${key}: ${value}`);
-    });
-
-    doc.end();
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Error generating PDF" });
-  }
-};
-
-// @desc GET /api/contracts/:id/export-csv
-exports.exportContractCSV = async (req, res) => {
-  try {
-    const contract = await Contract.findById(req.params.id).populate(
-      "buyer seller"
-    );
-
-    if (!contract) {
-      return res.status(404).json({ message: "Contract not found" });
-    }
-
-    const json = [contract.toObject()];
-    const parser = new Parser({ flatten: true });
-    const csv = parser.parse(json);
-
-    res.setHeader("Content-Type", "text/csv");
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename=Contract_${contract.contractNumber}.csv`
-    );
-    return res.send(csv);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Error generating CSV" });
   }
 };
 
@@ -469,65 +374,4 @@ exports.getDeletedContracts = async (req, res) => {
     deletedAt: -1,
   });
   res.json(trash);
-};
-
-exports.sendContractByEmail = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { recipient } = req.body;
-
-    const contract = await Contract.findById(id).populate("buyer seller");
-
-    if (!contract)
-      return res.status(404).json({ message: "Contract not found" });
-
-    const target = recipient === "buyer" ? contract.buyer : contract.seller;
-
-    if (!target) {
-      console.log("Target not found (buyer or seller):", recipient);
-      return res.status(400).json({ message: "Buyer/Seller not associated" });
-    }
-
-    if (!target.email)
-      return res.status(400).json({ message: "Recipient email not available" });
-
-    const bufferStream = new stream.PassThrough();
-    const doc = new PDFDocument();
-    let buffers = [];
-
-    doc.on("data", buffers.push.bind(buffers));
-    doc.on("end", async () => {
-      const pdfBuffer = Buffer.concat(buffers);
-
-      await sendEmail({
-        to: target.email,
-        subject: `Contract Details: ${contract.contractNumber}`,
-        text: `Please find the contract attached.`,
-        attachments: [
-          {
-            filename: `Contract_${contract.contractNumber}.pdf`,
-            content: pdfBuffer,
-          },
-        ],
-      });
-
-      res.status(200).json({ message: `Contract emailed to ${recipient}` });
-    });
-
-    doc.fontSize(20).text("Contract Details", { align: "center" }).moveDown();
-
-    Object.entries(contract.toObject()).forEach(([key, value]) => {
-      if (value instanceof Date) {
-        value = new Date(value).toLocaleDateString();
-      } else if (typeof value === "object" && value !== null) {
-        value = JSON.stringify(value, null, 2);
-      }
-      doc.fontSize(12).text(`${key}: ${value}`);
-    });
-
-    doc.end();
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Error sending email" });
-  }
 };
