@@ -29,6 +29,7 @@ app.use(
     origin: [
       "http://localhost:3000",
       "https://contract-management-livid.vercel.app",
+      "https://contract-management-test-client.vercel.app"
     ],
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
