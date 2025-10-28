@@ -7,8 +7,11 @@ const xero = new XeroClient({
   // clientId: process.env.XERO_CLIENT_ID,
   clientSecret: `QfxeO6UQZb3ZPR_0z1EPMtdXDGhLroFaEFJC9dSYN-C9iKzI`,
   // clientSecret: process.env.XERO_CLIENT_SECRET,
-  redirectUris: [`https://contract-management-test.vercel.app/api/auth/xero/callback`],
-  // redirectUris: [`http://localhost:8000/api/auth/xero/callback`],
+  // redirectUris: [`https://contract-management-test.vercel.app/api/auth/xero/callback`],
+  redirectUris: [
+    `http://localhost:8000/api/auth/xero/callback`,
+    `https://contract-management-test.vercel.app/api/auth/xero/callback`,
+  ],
   // redirectUris: [process.env.XERO_REDIRECT_URI],
   scopes: [
     "openid",
