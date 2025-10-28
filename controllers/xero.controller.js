@@ -193,6 +193,7 @@ exports.callback = async (req, res) => {
 };
 
 exports.getStatus = async (req, res) => {
+  
   try {
     const connected = await isXeroConnected();
 
@@ -212,6 +213,7 @@ exports.getStatus = async (req, res) => {
       connected: false,
     });
   } catch (error) {
+    console.log(error)
     res.status(500).json({ error: "Failed to check Xero connection status" });
   }
 };
