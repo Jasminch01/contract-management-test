@@ -3,15 +3,12 @@ const XeroToken = require("../models/XeroToken");
 
 // Xero Client
 const xero = new XeroClient({
-  clientId: `6030C0D1BF0B42C59AC0056C098BAD87`,
+  clientId: `462C23EFDD58459EAA6DBDE24FA7E21D`,
   // clientId: process.env.XERO_CLIENT_ID,
-  clientSecret: `QfxeO6UQZb3ZPR_0z1EPMtdXDGhLroFaEFJC9dSYN-C9iKzI`,
+  clientSecret: `AapueNx7qjVY05Mcno8NoCwLLc4MEz6aj6S5wOKHvYEM6XT9`,
   // clientSecret: process.env.XERO_CLIENT_SECRET,
   // redirectUris: [`https://contract-management-test.vercel.app/api/auth/xero/callback`],
-  redirectUris: [
-    `http://localhost:8000/api/auth/xero/callback`,
-    `https://contract-management-test.vercel.app/api/auth/xero/callback`,
-  ],
+  redirectUris: [`http://localhost:8000/api/auth/xero/callback`],
   // redirectUris: [process.env.XERO_REDIRECT_URI],
   scopes: [
     "openid",
@@ -30,6 +27,7 @@ function getXeroAuthUrl() {
 }
 
 // Get access token
+// Get access token
 async function getXeroAccessToken() {
   try {
     const tokenData = await XeroToken.findOne().sort({ updatedAt: -1 });
@@ -44,31 +42,63 @@ async function getXeroAccessToken() {
     const bufferTime = 5 * 60 * 1000; // 5 minutes
 
     if (now.getTime() >= expiresAt.getTime() - bufferTime) {
-      xero.setTokenSet({
+      // CRITICAL FIX: Set the complete token set before refreshing
+      // The openid-client needs the full token structure
+      const tokenSet = {
         access_token: tokenData.accessToken,
         refresh_token: tokenData.refreshToken,
         expires_in: 1800,
-      });
+        token_type: "Bearer", // Add token type
+      };
 
+      // If you have id_token stored, include it
+      if (tokenData.idToken) {
+        tokenSet.id_token = tokenData.idToken;
+      }
+
+      xero.setTokenSet(tokenSet);
+
+      // Now refresh the token
       const newTokenSet = await xero.refreshToken();
 
-      // Update DB new tokens
+      // Validate the new token set
+      if (!newTokenSet.access_token || !newTokenSet.refresh_token) {
+        throw new Error(
+          "Failed to refresh token - incomplete token set received"
+        );
+      }
+
+      // Update DB with new tokens
       const newExpiresAt = new Date();
       newExpiresAt.setSeconds(
-        newExpiresAt.getSeconds() + newTokenSet.expires_in
+        newExpiresAt.getSeconds() + (newTokenSet.expires_in || 1800)
       );
 
       await XeroToken.findByIdAndUpdate(tokenData._id, {
         accessToken: newTokenSet.access_token,
         refreshToken: newTokenSet.refresh_token,
         expiresAt: newExpiresAt,
+        idToken: newTokenSet.id_token || tokenData.idToken, // Preserve id_token
         updatedAt: new Date(),
       });
 
+      console.log("✅ Token refreshed successfully");
       return newTokenSet.access_token;
     }
+
+    console.log("✅ Using existing valid token");
     return tokenData.accessToken;
   } catch (error) {
+    console.error("❌ Token refresh error:", error.message);
+
+    // If refresh fails, token might be invalid - require re-authorization
+    if (
+      error.message?.includes("invalid_grant") ||
+      error.message?.includes("Token expired")
+    ) {
+      throw new Error("Xero authorization expired. Please reconnect to Xero.");
+    }
+
     throw error;
   }
 }
