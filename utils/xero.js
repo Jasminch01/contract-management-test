@@ -3,13 +3,12 @@ const XeroToken = require("../models/XeroToken");
 
 // Xero Client
 const xero = new XeroClient({
-  clientId: `462C23EFDD58459EAA6DBDE24FA7E21D`,
-  // clientId: process.env.XERO_CLIENT_ID,
-  clientSecret: `AapueNx7qjVY05Mcno8NoCwLLc4MEz6aj6S5wOKHvYEM6XT9`,
-  // clientSecret: process.env.XERO_CLIENT_SECRET,
-  // redirectUris: [`https://contract-management-test.vercel.app/api/auth/xero/callback`],
-  redirectUris: [`http://localhost:8000/api/auth/xero/callback`],
-  // redirectUris: [process.env.XERO_REDIRECT_URI],
+  clientId: `6030C0D1BF0B42C59AC0056C098BAD87`,
+  clientSecret: `QfxeO6UQZb3ZPR_0z1EPMtdXDGhLroFaEFJC9dSYN-C9iKzI`,
+  redirectUris: [
+    `http://localhost:8000/api/auth/xero/callback`,
+    `https://contract-management-test.vercel.app/api/auth/xero/callback`,
+  ],
   scopes: [
     "openid",
     "profile",
@@ -26,8 +25,56 @@ function getXeroAuthUrl() {
   return xero.buildConsentUrl();
 }
 
-// Get access token
-// Get access token
+// Refresh Xero token
+async function refreshXeroToken() {
+  try {
+    const tokenData = await XeroToken.findOne().sort({ updatedAt: -1 });
+
+    if (!tokenData || !tokenData.refreshToken) {
+      throw new Error("No refresh token available. Please reconnect to Xero.");
+    }
+
+    console.log("🔄 Refreshing Xero token...");
+
+    // Use refreshWithRefreshToken method from xero-node
+    const newTokenSet = await xero.refreshWithRefreshToken(
+      xero.clientId,
+      xero.clientSecret,
+      tokenData.refreshToken
+    );
+
+    // Calculate new expiry time
+    const expiresAt = new Date();
+    expiresAt.setSeconds(expiresAt.getSeconds() + (newTokenSet.expires_in || 1800));
+
+    // Update the database with new tokens
+    await XeroToken.findByIdAndUpdate(tokenData._id, {
+      accessToken: newTokenSet.access_token,
+      refreshToken: newTokenSet.refresh_token,
+      expiresAt: expiresAt,
+      updatedAt: new Date(),
+    });
+
+    console.log("✅ Xero token refreshed successfully");
+
+    // Return the new token set in the expected format
+    return {
+      access_token: newTokenSet.access_token,
+      refresh_token: newTokenSet.refresh_token,
+      expires_in: newTokenSet.expires_in || 1800,
+      token_type: "Bearer",
+      expires_at: expiresAt,
+    };
+  } catch (error) {
+    console.error("❌ Error refreshing Xero token:", error.message);
+    
+    // If refresh fails, the token might be completely invalid
+    // User will need to reconnect to Xero
+    throw new Error(`Failed to refresh Xero token: ${error.message}. Please reconnect to Xero.`);
+  }
+}
+
+// Get access token - SIMPLIFIED VERSION (no auto-refresh here)
 async function getXeroAccessToken() {
   try {
     const tokenData = await XeroToken.findOne().sort({ updatedAt: -1 });
@@ -36,70 +83,22 @@ async function getXeroAccessToken() {
       throw new Error("Xero not connected. Please authorize first.");
     }
 
-    // Check if token is expired
-    const now = new Date();
-    const expiresAt = new Date(tokenData.expiresAt);
-    const bufferTime = 5 * 60 * 1000; // 5 minutes
-
-    if (now.getTime() >= expiresAt.getTime() - bufferTime) {
-      // CRITICAL FIX: Set the complete token set before refreshing
-      // The openid-client needs the full token structure
-      const tokenSet = {
-        access_token: tokenData.accessToken,
-        refresh_token: tokenData.refreshToken,
-        expires_in: 1800,
-        token_type: "Bearer", // Add token type
-      };
-
-      // If you have id_token stored, include it
-      if (tokenData.idToken) {
-        tokenSet.id_token = tokenData.idToken;
-      }
-
-      xero.setTokenSet(tokenSet);
-
-      // Now refresh the token
-      const newTokenSet = await xero.refreshToken();
-
-      // Validate the new token set
-      if (!newTokenSet.access_token || !newTokenSet.refresh_token) {
-        throw new Error(
-          "Failed to refresh token - incomplete token set received"
-        );
-      }
-
-      // Update DB with new tokens
-      const newExpiresAt = new Date();
-      newExpiresAt.setSeconds(
-        newExpiresAt.getSeconds() + (newTokenSet.expires_in || 1800)
-      );
-
-      await XeroToken.findByIdAndUpdate(tokenData._id, {
-        accessToken: newTokenSet.access_token,
-        refreshToken: newTokenSet.refresh_token,
-        expiresAt: newExpiresAt,
-        idToken: newTokenSet.id_token || tokenData.idToken, // Preserve id_token
-        updatedAt: new Date(),
-      });
-
-      console.log("✅ Token refreshed successfully");
-      return newTokenSet.access_token;
+    // Validate that we have required tokens
+    if (!tokenData.accessToken || !tokenData.refreshToken) {
+      throw new Error("Invalid Xero token data. Please reconnect to Xero.");
     }
 
-    console.log("✅ Using existing valid token");
-    return tokenData.accessToken;
+    // Just return the token set - let caller handle refresh if needed
+    return {
+      access_token: tokenData.accessToken,
+      refresh_token: tokenData.refreshToken,
+      expires_in: 1800,
+      token_type: "Bearer",
+      expires_at: tokenData.expiresAt,
+    };
   } catch (error) {
-    console.error("❌ Token refresh error:", error.message);
-
-    // If refresh fails, token might be invalid - require re-authorization
-    if (
-      error.message?.includes("invalid_grant") ||
-      error.message?.includes("Token expired")
-    ) {
-      throw new Error("Xero authorization expired. Please reconnect to Xero.");
-    }
-
-    throw error;
+    console.error("Error in getXeroAccessToken:", error.message);
+    throw new Error(`Failed to get Xero access token: ${error.message}`);
   }
 }
 
@@ -198,14 +197,12 @@ const buildLineItems = (contract, taxType, accountCode) => {
     const description = descriptionParts.join(" | ");
 
     // Create the line item
-    // Xero will automatically calculate GST based on taxType
-    // The columns will be: Description, Quantity, Unit Price, GST, Amount AUD
     lineItems.push({
       description: description,
-      quantity: 1, // Quantity = 1 (total already calculated)
-      unitAmount: contract.priceExGST, // Unit Price (Ex GST)
-      accountCode: accountCode, // Revenue account code
-      taxType: taxType, // Tax type (e.g., "OUTPUT2" for 10% GST in Australia)
+      quantity: 1,
+      unitAmount: contract.priceExGST,
+      accountCode: accountCode,
+      taxType: taxType,
     });
 
     console.log(`✅ Built line item for contract ${contract.contractNumber}:`, {
@@ -240,38 +237,6 @@ const buildLineItems = (contract, taxType, accountCode) => {
     ];
   }
 };
-
-// const buildLineItems = (contract, taxType, accountCode) => {
-//   try {
-//     if (
-//       !contract.items ||
-//       !Array.isArray(contract.items) ||
-//       contract.items.length === 0
-//     ) {
-//       return [
-//         {
-//           description:
-//             contract.description || `Contract ${contract.contractNumber}`,
-//           quantity: 1,
-//           unitAmount: contract.priceExGST || 0,
-//           accountCode,
-//           taxType,
-//         },
-//       ];
-//     }
-
-//     return contract.items.map((item) => ({
-//       description: item.description || "Item",
-//       quantity: item.quantity || 1,
-//       unitAmount: item.unitPrice || 0,
-//       accountCode,
-//       taxType,
-//     }));
-//   } catch (err) {
-//     console.error("⚠️ Failed to build line items:", err.message);
-//     throw new Error("Failed to build invoice line items.");
-//   }
-// };
 
 // Find or Create Contact
 const findOrCreateContact = async (
@@ -310,7 +275,6 @@ const findOrCreateContact = async (
         `EmailAddress=="${cleanEmail}"`
       );
     } catch (searchError) {
-      // Continue to create new contact
       searchResponse = null;
     }
 
@@ -318,7 +282,6 @@ const findOrCreateContact = async (
     if (searchResponse?.body?.contacts?.length > 0) {
       const existing = searchResponse.body.contacts[0];
 
-      // Validate UUID format
       if (
         existing.contactID &&
         /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/i.test(
@@ -383,7 +346,6 @@ const findOrCreateContact = async (
 
     return newContact.contactID;
   } catch (err) {
-    // Provide detailed error message
     let errorMessage = `Failed to find or create ${recipientType} contact in Xero`;
 
     if (err.response?.body) {
@@ -410,6 +372,7 @@ module.exports = {
   getXeroAccessToken,
   getXeroTenantId,
   isXeroConnected,
+  refreshXeroToken, // ✅ NOW EXPORTED
   getDefaultTaxType,
   getDefaultRevenueAccount,
   buildLineItems,
