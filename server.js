@@ -41,7 +41,7 @@ app.use(cookieParser());
 
 // Contract API route
 app.use("/api/auth", authRoutes);
-app.use("/api/contracts", authMiddleware, contractRoutes);
+app.use("/api/contracts", contractRoutes);
 app.use("/api/buyers", authMiddleware, buyerRoutes);
 app.use("/api/sellers", authMiddleware, sellerRoutes);
 app.use("/api", authMiddleware, trashRoutes);
