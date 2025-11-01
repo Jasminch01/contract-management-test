@@ -34,7 +34,7 @@
 // };
 
 const jwt = require("jsonwebtoken");
-const User = require("../models/User"); // Adjust path to your User model
+const User = require("../models/User");
 const SECRET = process.env.JWT_SECRET || "supersecret";
 
 module.exports = async (req, res, next) => {
